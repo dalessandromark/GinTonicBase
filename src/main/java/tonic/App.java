@@ -53,22 +53,18 @@ public class App implements AutoCloseable
             ress = session.writeTransaction(new TransactionWork<String>() {
                 @Override
                 public String execute(Transaction tx) {
-                    Iterable<String> keyIterable;
-                    Iterable<Value> valueIterable;
-                    Iterator<String> keyIterator;
-                    Iterator<Value> valueIterator;
                     String resultString = "";
                     String keys = "";
                     String values = "";
                     StatementResult result = tx.run(QUERY);
-                    keyIterable = result.keys();
-                    keyIterator = keyIterable.iterator();
-                    while (keyIterator.hasNext()) {
-                        keys = keys.concat(keyIterator.next()+" ");
+                    Iterable<String> keyIterable = result.keys();
+                    for (String key : keyIterable) {
+                        keys = keys.concat(key+" ");
                     }
+                    Iterable<Value> valueIterable;
+                    Iterator<Value> valueIterator;
                     while (result.hasNext()) {
                         valueIterable = result.next().values();
-                        //valueIterable = resNode.values()
                         valueIterator = valueIterable.iterator();
                         while (valueIterator.hasNext()) {
                             try {
@@ -133,8 +129,8 @@ public class App implements AutoCloseable
     {
         try ( App database = new App( "bolt://localhost:7687", "neo4j", "marcel123" ) )
         {
-            //String[] result = database.dataQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
-            String[] result = database.dataQuery("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin"); //Search
+            String[] result = database.dataQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
+            //String[] result = database.dataQuery("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin"); //Search
             database.nicePrint(result);
             //greeter.testQuery();
         }
