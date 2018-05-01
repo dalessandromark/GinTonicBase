@@ -5,6 +5,11 @@ import org.neo4j.driver.v1.*;
 import org.neo4j.driver.v1.types.Node;
 //import org.neo4j.driver.v1.types.Type;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Iterator;
 import java.util.List;
 
@@ -125,13 +130,126 @@ public class App implements AutoCloseable
             System.out.println(val);
         }
     }
+
+    public void dataAdder(final String type, final String newName) {
+        //match (n:Gin) return count(*)       returns amount of Gin
+        if(type.equals("Gin")||type.equals("Tonic")||type.equals("Garnish")){
+            String askIfThisNeedsToBeHere;
+
+            try( Session session = driver.session() ) {
+
+                askIfThisNeedsToBeHere = session.writeTransaction(new TransactionWork<String>() {
+                    @Override
+                    public String execute(Transaction tx) {
+                        StatementResult amountFinder = tx.run("match (n:" + type + ") return count(*)");
+                        int amount = Integer.parseInt(amountFinder.next().values().get(0).toString());
+                        //System.out.println(amount);
+                        String q = "CREATE(" + type.substring(0,3).toLowerCase() + amount+":"+type+"{name: '"+newName+"' })";
+                        //System.out.println(q);
+                        StatementResult add = tx.run(q);
+                        System.out.println("Successfully added a " + type + " with the name " + newName + " to the database");
+                        return q; }});
+
+            }
+        }
+        else{System.out.println("Invalid input on type, can only use Gin, Tonic or Garnish");}
+    }
+    public void deleteDatabase() {
+        //match (n:Gin) return count(*)       returns amount of Gin
+        String askIfThisNeedsToBeHere;
+
+        try( Session session = driver.session() ) {
+
+            askIfThisNeedsToBeHere = session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+                    //StatementResult amountFinder = tx.run("match (n:" + type + ") return count(*)");
+                    //int amount = Integer.parseInt(amountFinder.next().values().get(0).toString());
+                    //System.out.println(amount);
+                    //String q = "CREATE(" + type.substring(0,3).toLowerCase() + amount+":"+type+"{name: '"+newName+"' })";
+                    String q = "MATCH (n) DETACH DELETE n";
+                    //System.out.println(q);
+                    StatementResult add = tx.run(q);
+                    System.out.println("Successfully deleted the database");
+                    return q; }});
+
+        }
+    }
+    public void createDatabaseFromFile() {
+        //match (n:Gin) return count(*)       returns amount of Gin
+        String askIfThisNeedsToBeHere;
+
+        try( Session session = driver.session() ) {
+
+            askIfThisNeedsToBeHere = session.writeTransaction(new TransactionWork<String>() {
+                @Override
+
+                public String execute(Transaction tx) {
+                    String s = null;
+                    String q;
+                    try {
+                        s = App.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath().toString();
+                    } catch (URISyntaxException e) {
+                        e.printStackTrace();
+                    }
+                    for(int c = 0; c<3;c++){
+                        int i = s.lastIndexOf("/");
+                        s = s.substring(0,i);
+                    }
+                    s=s.concat("/base base base.txt/");
+
+                    try(BufferedReader br = new BufferedReader(new FileReader(s))) {
+                        StringBuilder sb = new StringBuilder();
+                        String line = br.readLine();
+
+                        while (line != null) {
+                            sb.append(line);
+                            sb.append(System.lineSeparator());
+                            line = br.readLine();
+                        }
+                        q = sb.toString();
+                        StatementResult add = tx.run(q);
+                    } catch (FileNotFoundException e) {
+                        e.printStackTrace();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    //StatementResult amountFinder = tx.run("match (n:" + type + ") return count(*)");
+                    //int amount = Integer.parseInt(amountFinder.next().values().get(0).toString());
+                    //System.out.println(amount);
+                    //String q = "CREATE(" + type.substring(0,3).toLowerCase() + amount+":"+type+"{name: '"+newName+"' })";
+                    //String q = "MATCH (n) DETACH DELETE n";
+                    //System.out.println(q);
+                    //StatementResult add = tx.run(q);
+                    System.out.println("Successfully created the database");
+                    String t = "";
+                    return t; }});
+
+        }
+    }
+    public void resetDatabase(App database){
+        database.deleteDatabase();
+        database.createDatabaseFromFile();
+    }
+    //match (n:Tonic) return *      return all Tonics
     public static void main( String... args ) throws Exception
     {
-        try ( App database = new App( "bolt://localhost:7687", "neo4j", "marcel123" ) )
+        //try ( App database = new App( "bolt://localhost:7687", "neo4j", "marcel123" ) )
+        try ( App database = new App( "bolt://localhost:7687", "neo4j", "patrick123" ) )
+        //http://localhost:7474/browser/
         {
-            String[] result = database.dataQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
+            //String[] result = database.dataQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
             //String[] result = database.dataQuery("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin"); //Search
-            database.nicePrint(result);
+
+            //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Gin", "New Gin");
+            //database.deleteDatabase();
+            //database.createDatabaseFromFile();
+            database.resetDatabase(database);
+            database.dataAdder("Gin", "New Gin");
+            database.dataAdder("Tonic", "New Tonic");
+            database.dataAdder("Garnish", "New Garnish");
+            //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
+            //database.nicePrint(result);
             //greeter.testQuery();
         }
     }
