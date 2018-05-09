@@ -30,25 +30,6 @@ public class App implements AutoCloseable
         driver.close();
     }
 
-    public void printGreeting( final String message )
-    {
-        try ( Session session = driver.session() )
-        {
-            String greeting = session.writeTransaction( new TransactionWork<String>()
-            {
-                @Override
-                public String execute( Transaction tx )
-                {
-                    StatementResult result = tx.run( "CREATE (a:Greeting) " +
-                                    "SET a.message = $message " +
-                                    "RETURN a.message + ', from node ' + id(a)",
-                            parameters( "message", message ) );
-                    return result.single().get( 0 ).asString();
-                }
-            } );
-            System.out.println( greeting );
-        }
-    }
     public String[] dataQuery(final String QUERY) {
         String ress;
         String[] resultArray;
@@ -93,36 +74,6 @@ public class App implements AutoCloseable
         return resultArray;
     }
 
-    public void testQuery(){
-
-        try( Session session = driver.session() ) {
-
-            String ress = session.writeTransaction(new TransactionWork<String>() {
-                @Override
-                public String execute(Transaction tx) {
-                    StatementResult result = tx.run("MATCH (tom {name: \"Tom Hanks\"}) RETURN tom");
-                    Iterable<Value> sit = result.single().get(0).asNode().values();
-                    Iterator<Value> iterator = sit.iterator();
-                    while (iterator.hasNext()) {
-                        Value val = iterator.next();
-                        /*
-                        if (val.asObject().getClass().toString().equals("Integer") ) {
-                            patrick = patrick.concat(String.valueOf(val.asInt()));
-                        }
-                        else{
-                            patrick = patrick.concat(val.asString());
-                        }
-                    }
-                    return patrick;
-                    */
-                        System.out.println(val.asObject().toString());
-                    }
-                    return "Ayy";
-                }
-            });
-            System.out.println(ress);
-        }
-    }
     public void nicePrint(String[] resultList) {
         System.out.println(resultList[0]);
         String[] values = resultList[1].split("%");
