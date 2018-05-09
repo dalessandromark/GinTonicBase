@@ -163,12 +163,8 @@ public class App implements AutoCloseable
             askIfThisNeedsToBeHere = session.writeTransaction(new TransactionWork<String>() {
                 @Override
                 public String execute(Transaction tx) {
-                    //StatementResult amountFinder = tx.run("match (n:" + type + ") return count(*)");
-                    //int amount = Integer.parseInt(amountFinder.next().values().get(0).toString());
-                    //System.out.println(amount);
-                    //String q = "CREATE(" + type.substring(0,3).toLowerCase() + amount+":"+type+"{name: '"+newName+"' })";
+
                     String q = "MATCH (n) DETACH DELETE n";
-                    //System.out.println(q);
                     StatementResult add = tx.run(q);
                     System.out.println("Successfully deleted the database");
                     return q; }});
@@ -231,6 +227,56 @@ public class App implements AutoCloseable
         database.deleteDatabase();
         database.createDatabaseFromFile();
     }
+
+    public void createNewRating(final int rating, final String comment, final String comboName){
+
+
+        String amount;
+        try(Session session = driver.session()){
+            amount = session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+
+                    String q = "MATCH (n:Rating)-[r]->(b:Combo)" +
+                            " WHERE b.name='" + comboName + "'"
+                            + " RETURN COUNT(r)";
+                    StatementResult add = tx.run(q);
+                    Value a = add.next().get(0);
+                    System.out.println("Amount of comments: " + a);
+                    return a.toString(); }});
+        }
+
+        String noSpace = comboName.replace(" ","");
+        String comName = "'comment " + amount + " for " + comboName +
+        "'";
+        String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: " + comName + "," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
+        dataQuery(query);
+        System.out.println("Comment node has been submitted to the database.");
+        //nicePrint(dataReturn);
+        String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = " + comName + " AND b.name = '" + comboName +
+                "' CREATE (a)-[r:ComboComment]->(b) RETURN type(r)";
+        dataQuery(relationQuery);
+        System.out.println("The Relation between rating and Combo has been created.");
+        //nicePrint(relDataReturn);
+    }
+
+    public void incrHelpful(final String comName){
+
+        try( Session session = driver.session() ) {
+
+            session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+
+                    String q = "MATCH (n:Rating) " +
+                            "WHERE n.name='" + comName + "' " +
+                            "SET n.helpfuls=n.helpfuls+1";
+                    StatementResult add = tx.run(q);
+                    System.out.println("WE DID IT BOIS!!!");
+                    return q; }});
+
+        }
+    }
     //match (n:Tonic) return *      return all Tonics
     public static void main( String... args ) throws Exception
     {
@@ -245,9 +291,12 @@ public class App implements AutoCloseable
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
             database.resetDatabase(database);
-            database.dataAdder("Gin", "New Gin");
-            database.dataAdder("Tonic", "New Tonic");
-            database.dataAdder("Garnish", "New Garnish");
+            //database.dataAdder("Gin", "New Gin");
+            //database.dataAdder("Tonic", "New Tonic");
+            //database.dataAdder("Garnish", "New Garnish");
+            database.createNewRating(5, "Super good stuff!", "The rice");
+            database.createNewRating(1, "GARBAGE!!!", "The rice");
+            database.incrHelpful("comment 0 for The rice");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             //greeter.testQuery();
