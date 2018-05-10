@@ -65,7 +65,6 @@ public class App implements AutoCloseable
                             } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
                                 //TODO: Maybe Insert code here for relationship values
                             }
-
                         }
                         values = values.concat("%");
                         }
@@ -86,7 +85,8 @@ public class App implements AutoCloseable
 
     public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY1, QUERY2;
-        QueryResult result;
+        final String ress;
+        QueryResult result = new QueryResult();
 
         if (GARNISH.equals("")) {
             QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
@@ -95,8 +95,39 @@ public class App implements AutoCloseable
             QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
             QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
         }
-        result = dataQuery(QUERY1);
-        result.extraValues = dataQuery(QUERY2).values;
+
+        try( Session session = driver.session() ) {
+
+            ress = session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+                    String resultString = "";
+                    String keys = "";
+                    String values = "";
+                    StatementResult result = tx.run(QUERY1);
+                    Iterable<String> keyIterable = result.keys();
+                    for (String key : keyIterable) {
+                        keys = keys.concat(key+"§");
+                    }
+                    if (result.list().isEmpty()) {
+                        return null;
+                    }
+                    for (int i = 0; i < result.list().size(); i++){
+                        Record record = result.list().get(i);
+                        for (int j = 0; j < record.size(); j++){
+                            System.out.println(record.get(j).asString());
+                            values = values.concat(record.get(j).asString() + " ");
+                        }
+                        values = values.concat("%");
+                    }
+                    resultString = resultString.concat(keys);
+                    resultString = resultString.concat("#");
+                    resultString = resultString.concat(values);
+                    return resultString; }});
+        }
+        if (ress == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        result.formatResultString(ress);
+        //result.extraValues = dataQuery(QUERY2).values;
         return result;
     }
 
@@ -271,7 +302,7 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                //String[] res = database.searchByName("x", "Gin");
+                //QueryResult res = database.searchByName("x", "Gin");
                 QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
                 res.nicePrint();
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
