@@ -2,6 +2,7 @@ package tonic;
 
 
 import org.neo4j.driver.v1.*;
+
 import org.neo4j.driver.v1.types.Node;
 //import org.neo4j.driver.v1.types.Type;
 
@@ -30,9 +31,9 @@ public class App implements AutoCloseable
         driver.close();
     }
 
-    public String[] dataQuery(final String QUERY) {
+    public QueryResult dataQuery(final String QUERY) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
         String ress;
-        String[] resultArray;
+        QueryResult result = new QueryResult();
 
         try( Session session = driver.session() ) {
 
@@ -45,10 +46,13 @@ public class App implements AutoCloseable
                     StatementResult result = tx.run(QUERY);
                     Iterable<String> keyIterable = result.keys();
                     for (String key : keyIterable) {
-                        keys = keys.concat(key+" ");
+                        keys = keys.concat(key+"§");
                     }
                     Iterable<Value> valueIterable;
                     Iterator<Value> valueIterator;
+                    if (!result.hasNext()) {
+                        return null;
+                    }
                     while (result.hasNext()) {
                         valueIterable = result.next().values();
                         valueIterator = valueIterable.iterator();
@@ -70,16 +74,30 @@ public class App implements AutoCloseable
                     resultString = resultString.concat(values);
                     return resultString; }});
         }
-        resultArray = ress.split("#");
-        return resultArray;
+        if (ress == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        result.formatResultString(ress);
+        return result;
     }
 
-    public void nicePrint(String[] resultList) {
-        System.out.println(resultList[0]);
-        String[] values = resultList[1].split("%");
-        for (String val : values) {
-            System.out.println(val);
+    public QueryResult searchByName(final String NAME, final String TYPE) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
+        final String QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'"+NAME+".*' RETURN n";
+        return dataQuery(QUERY);
+    }
+
+    public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
+        final String QUERY1, QUERY2;
+        QueryResult result;
+
+        if (GARNISH.equals("")) {
+            QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
+            QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"'RETURN avg(rat.rating)";
+        } else {
+            QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
+            QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
         }
+        result = dataQuery(QUERY1);
+        result.extraValues = dataQuery(QUERY2).values;
+        return result;
     }
 
     public void dataAdder(final String type, final String newName) {
@@ -228,11 +246,13 @@ public class App implements AutoCloseable
 
         }
     }
+
     //match (n:Tonic) return *      return all Tonics
-    public static void main( String... args ) throws Exception
+    public static void main( String... args )
     {
-        //try ( App database = new App( "bolt://localhost:7687", "neo4j", "marcel123" ) )
-        try ( App database = new App( "bolt://localhost:7687", "neo4j", "patrick123" ) )
+        App database = new App( "bolt://localhost:7687", "neo4j", "patrick123");
+
+
         //http://localhost:7474/browser/
         {
             //String[] result = database.dataQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
@@ -241,16 +261,23 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Gin", "New Gin");
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
-            database.resetDatabase(database);
+            //database.resetDatabase(database);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
-            database.createNewRating(5, "Super good stuff!", "The rice");
-            database.createNewRating(1, "GARBAGE!!!", "The rice");
-            database.incrHelpful("comment 0 for The rice");
+            //database.createNewRating(5, "Super good stuff!", "The rice");
+            //database.createNewRating(1, "GARBAGE!!!", "The rice");
+            //database.incrHelpful("comment 0 for The rice");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
-            //greeter.testQuery();
+            try {
+                //String[] res = database.searchByName("x", "Gin");
+                QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
+                res.nicePrint();
+            } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
+                System.out.println("No fucking records cunt");
+            }
+
         }
     }
 }
