@@ -272,7 +272,7 @@ public class App implements AutoCloseable
                             "WHERE n.name='" + comName + "' " +
                             "SET n.helpfuls=n.helpfuls+1";
                     StatementResult add = tx.run(q);
-                    System.out.println("WE DID IT BOIS!!!");
+                    System.out.println("WE INCREMENTED IT BOIS!!!");
                     return q; }});
 
         }
