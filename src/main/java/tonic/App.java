@@ -292,7 +292,7 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Gin", "New Gin");
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
-            //database.resetDatabase(database);
+            database.resetDatabase(database);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
