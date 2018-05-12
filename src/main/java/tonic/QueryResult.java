@@ -19,10 +19,16 @@ public class QueryResult {
         this.values = keysValues[1].split("%");
     }
 
+    public void fromResultArray(String[] arr){
+        this.keys = arr[0].split("#");
+        this.values = arr[1].split("%");
+    }
+
     public void nicePrint() {
         for (String key : this.keys) {
-            System.out.println(key);
+            System.out.print(key+"\t");
         }
+        System.out.println();
         for (String val : this.values) {
             System.out.println(val);
         }
