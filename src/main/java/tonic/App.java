@@ -89,11 +89,11 @@ public class App implements AutoCloseable
         QueryResult result = new QueryResult();
 
         if (GARNISH.equals("")) {
-            QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
-            QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"'RETURN avg(rat.rating)";
+            QUERY1 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
+            QUERY2 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"'RETURN avg(rat.rating)";
         } else {
-            QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
-            QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
+            QUERY1 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
+            QUERY2 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
         }
 
         try( Session session = driver.session() ) {
@@ -257,7 +257,7 @@ public class App implements AutoCloseable
 
         String noSpace = comboName.replace(" ","");
         String comName = "'comment " + amount + " for " + comboName +
-        "'";
+                "'";
         String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: " + comName + "," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
         dataQuery(query);
         System.out.println("Comment node has been submitted to the database.");
@@ -281,7 +281,7 @@ public class App implements AutoCloseable
                             "WHERE n.name='" + comName + "' " +
                             "SET n.helpfuls=n.helpfuls+1";
                     StatementResult add = tx.run(q);
-                    System.out.println("WE INCREMENTED IT BOIS!!!");
+                    System.out.println("WE DID IT BOIS!!!");
                     return q; }});
 
         }
@@ -311,8 +311,8 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                //QueryResult res = database.searchByName("x", "Gin");
-                QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
+                QueryResult res = database.searchByName("juniper-gin", "Gin");
+                //QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
                 res.nicePrint();
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
                 System.out.println("No fucking records cunt");
