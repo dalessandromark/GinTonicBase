@@ -85,7 +85,7 @@ public class App implements AutoCloseable
 
     public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY1, QUERY2;
-        final String ress;
+        final String[] resArr;
         QueryResult result = new QueryResult();
 
         if (GARNISH.equals("")) {
@@ -98,35 +98,44 @@ public class App implements AutoCloseable
 
         try( Session session = driver.session() ) {
 
-            ress = session.writeTransaction(new TransactionWork<String>() {
+            resArr = session.writeTransaction(new TransactionWork<String[]>() {
                 @Override
-                public String execute(Transaction tx) {
-                    String resultString = "";
+                public String[] execute(Transaction tx) {
+                    String[] resultArr = new String[2];
                     String keys = "";
                     String values = "";
                     StatementResult result = tx.run(QUERY1);
                     Iterable<String> keyIterable = result.keys();
                     for (String key : keyIterable) {
-                        keys = keys.concat(key+"§");
+                        keys = keys.concat(key+"#");
                     }
-                    if (result.list().isEmpty()) {
+                    Iterable<Value> valueIterable;
+                    Iterator<Value> valueIterator;
+                    if (!result.hasNext()) {
                         return null;
                     }
-                    for (int i = 0; i < result.list().size(); i++){
-                        Record record = result.list().get(i);
-                        for (int j = 0; j < record.size(); j++){
-                            System.out.println(record.get(j).asString());
-                            values = values.concat(record.get(j).asString() + " ");
+                    while (result.hasNext()) {
+                        valueIterable = result.next().values();
+                        valueIterator = valueIterable.iterator();
+                        while (valueIterator.hasNext()) {
+                            try {
+                                values = values.concat(valueIterator.next().asInt()+"\t");
+                                values = values.concat(valueIterator.next().asString()+"%");
+                                //Iterable<Value> nodeValues = valueIterator.next().asNode().values();
+                            } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
+                            }
                         }
-                        values = values.concat("%");
                     }
-                    resultString = resultString.concat(keys);
-                    resultString = resultString.concat("#");
-                    resultString = resultString.concat(values);
-                    return resultString; }});
+                    resultArr[0] = keys;
+                    resultArr[1] = values;
+                    //resultString = resultString.concat(keys);
+                    //resultString = resultString.concat("#");
+                    //resulresultArrsultString.concat(values);
+                    return resultArr; }});
         }
-        if (ress == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
-        result.formatResultString(ress);
+        if (resArr[0] == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        //result.formatResultString(ress);
+        result.fromResultArray(resArr);
         //result.extraValues = dataQuery(QUERY2).values;
         return result;
     }
