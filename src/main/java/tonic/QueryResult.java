@@ -14,6 +14,7 @@ public class QueryResult {
     }
 
     public void formatResultString(String resS) {
+        //System.out.println(resS);
         String[] keysValues = resS.split("#");
         this.keys = keysValues[0].split("§");
         this.values = keysValues[1].split("%");
