@@ -32,21 +32,18 @@ public class App implements AutoCloseable
     }
 
     public QueryResult dataQuery(final String QUERY) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
-        String ress;
-        QueryResult result = new QueryResult();
+        final QueryResult queryResult;
 
         try( Session session = driver.session() ) {
 
-            ress = session.writeTransaction(new TransactionWork<String>() {
+            queryResult = session.writeTransaction(new TransactionWork<QueryResult>() {
                 @Override
-                public String execute(Transaction tx) {
-                    String resultString = "";
-                    String keys = "";
-                    String values = "";
+                public QueryResult execute(Transaction tx) {
+                    QueryResult queryRes = new QueryResult();
                     StatementResult result = tx.run(QUERY);
                     Iterable<String> keyIterable = result.keys();
                     for (String key : keyIterable) {
-                        keys = keys.concat(key+"§");
+                        queryRes.keys.add(key);
                     }
                     Iterable<Value> valueIterable;
                     Iterator<Value> valueIterator;
@@ -60,22 +57,17 @@ public class App implements AutoCloseable
                             try {
                                 Iterable<Value> nodeValues = valueIterator.next().asNode().values();
                                 for (Value v : nodeValues) {
-                                    values = values.concat(v.asString()+" ");
+                                    queryRes.values.add(v.asString());
                                 }
                             } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
                                 //TODO: Maybe Insert code here for relationship values
                             }
                         }
-                        values = values.concat("%");
-                        }
-                    resultString = resultString.concat(keys);
-                    resultString = resultString.concat("#");
-                    resultString = resultString.concat(values);
-                    return resultString; }});
+                    }
+                    return queryRes; }});
         }
-        if (ress == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
-        result.formatResultString(ress);
-        return result;
+        if (queryResult == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        return queryResult;
     }
 
     public QueryResult searchByName(final String NAME, final String TYPE) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
@@ -85,8 +77,7 @@ public class App implements AutoCloseable
 
     public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY1, QUERY2;
-        final String[] resArr;
-        QueryResult result = new QueryResult();
+        QueryResult result;
 
         if (GARNISH.equals("")) {
             QUERY1 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
@@ -98,16 +89,15 @@ public class App implements AutoCloseable
 
         try( Session session = driver.session() ) {
 
-            resArr = session.writeTransaction(new TransactionWork<String[]>() {
+            result = session.writeTransaction(new TransactionWork<QueryResult>() {
                 @Override
-                public String[] execute(Transaction tx) {
-                    String[] resultArr = new String[2];
-                    String keys = "";
-                    String values = "";
+                public QueryResult execute(Transaction tx) {
+                    QueryResult queryResult = new QueryResult();
                     StatementResult result = tx.run(QUERY1);
+                    StatementResult result2 = tx.run(QUERY2);
                     Iterable<String> keyIterable = result.keys();
                     for (String key : keyIterable) {
-                        keys = keys.concat(key+"#");
+                        queryResult.keys.add(key);
                     }
                     Iterable<Value> valueIterable;
                     Iterator<Value> valueIterator;
@@ -119,24 +109,21 @@ public class App implements AutoCloseable
                         valueIterator = valueIterable.iterator();
                         while (valueIterator.hasNext()) {
                             try {
-                                values = values.concat(valueIterator.next().asInt()+"\t");
-                                values = values.concat(valueIterator.next().asString()+"%");
-                                //Iterable<Value> nodeValues = valueIterator.next().asNode().values();
+                                queryResult.values.add(valueIterator.next().asInt()+"\t");
+                                queryResult.values.add(valueIterator.next().asString());
                             } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
                             }
                         }
                     }
-                    resultArr[0] = keys;
-                    resultArr[1] = values;
-                    //resultString = resultString.concat(keys);
-                    //resultString = resultString.concat("#");
-                    //resulresultArrsultString.concat(values);
-                    return resultArr; }});
+
+                    if (!result2.hasNext()) {
+                        return null;
+                    }
+                    queryResult.extraValues.add(String.valueOf(result2.single().get(0).asFloat()));
+
+                    return queryResult; }});
         }
-        if (resArr[0] == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
-        //result.formatResultString(ress);
-        result.fromResultArray(resArr);
-        //result.extraValues = dataQuery(QUERY2).values;
+        if (result == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
         return result;
     }
 
@@ -181,12 +168,9 @@ public class App implements AutoCloseable
         }
     }
     public void createDatabaseFromFile() {
-        //match (n:Gin) return count(*)       returns amount of Gin
-        String askIfThisNeedsToBeHere;
-
         try( Session session = driver.session() ) {
 
-            askIfThisNeedsToBeHere = session.writeTransaction(new TransactionWork<String>() {
+             session.writeTransaction(new TransactionWork<String>() {
                 @Override
 
                 public String execute(Transaction tx) {
@@ -219,13 +203,6 @@ public class App implements AutoCloseable
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                    //StatementResult amountFinder = tx.run("match (n:" + type + ") return count(*)");
-                    //int amount = Integer.parseInt(amountFinder.next().values().get(0).toString());
-                    //System.out.println(amount);
-                    //String q = "CREATE(" + type.substring(0,3).toLowerCase() + amount+":"+type+"{name: '"+newName+"' })";
-                    //String q = "MATCH (n) DETACH DELETE n";
-                    //System.out.println(q);
-                    //StatementResult add = tx.run(q);
                     System.out.println("Successfully created the database");
                     String t = "";
                     return t; }});
@@ -237,22 +214,20 @@ public class App implements AutoCloseable
         database.createDatabaseFromFile();
     }
 
-    public String getCommentAmount(final String comboName){
-        String amount;
+    public int getCommentAmount(final String comboName){
+        int amount;
         try(Session session = driver.session()){
-            amount = session.writeTransaction(new TransactionWork<String>() {
+            amount = session.writeTransaction(new TransactionWork<Integer>() {
                 @Override
-                public String execute(Transaction tx) {
+                public Integer execute(Transaction tx) {
 
                     String q = "MATCH (n:Rating)-[r]->(b:Combo)" +
                             " WHERE b.name='" + comboName + "'"
                             + " RETURN COUNT(r)";
                     StatementResult add = tx.run(q);
                     Value a = add.next().get(0);
-                    System.out.println("Amount of comments: " + a);
-                    return a.toString(); }});
+                    return a.asInt(); }});
         }
-        System.out.println(amount);
         return amount;
     }
 
@@ -261,17 +236,17 @@ public class App implements AutoCloseable
             session.writeTransaction(new TransactionWork<String>() {
                 @Override
                 public String execute(Transaction tx) {
-                    String amount = getCommentAmount(comboName);
+                    int amount = getCommentAmount(comboName);
                     String noSpace = comboName.replace(" ","");
                     String comName = "comment " + amount + " for " + comboName;
                     String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
-                    System.out.println(query);
+                    //System.out.println(query);
                     StatementResult run = tx.run(query);
-                    System.out.println("Comment node has been submitted to the database.");
+                    //System.out.println("Comment node has been submitted to the database.");
                     String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = '" + comName + "' AND b.name = '" + comboName +
                             "' CREATE (a)-[r:Rating_For]->(b)";
                     run = tx.run(relationQuery);
-                    System.out.println("The Relation between rating and Combo has been created.");
+                    //System.out.println("The Relation between rating and Combo has been created.");
                     return relationQuery;
                 }
             });
@@ -283,18 +258,18 @@ public class App implements AutoCloseable
             session.writeTransaction(new TransactionWork<String>() {
                 @Override
                 public String execute(Transaction tx) {
-                    String amount = getCommentAmount(comboName);
+                    int amount = getCommentAmount(comboName);
                     String noSpace = comboName.replace(" ","");
                     String comName = "comment " + amount + " for " + comboName;
                     String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
-                    System.out.println(query);
+                    //System.out.println(query);
                     StatementResult run = tx.run(query);
 
-                    System.out.println("Comment node has been submitted to the database.");
+                    //System.out.println("Comment node has been submitted to the database.");
                     String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = '" + comName + "' AND b.name = '" + comboName +
                             "' CREATE (a)-[r:Rating_For]->(b)";
                     run = tx.run(relationQuery);
-                    System.out.println("The Relation between rating and Combo has been created.");
+                    //System.out.println("The Relation between rating and Combo has been created.");
                     String userRatingQuery = "MATCH (a:User),(b:Rating) " +
                             "WHERE a.name = '" + userName + "' AND b.name = 'comment " + amount + " for " + comboName +
                             "' CREATE (a)-[r:Owner_Of]->(b)";
@@ -318,7 +293,7 @@ public class App implements AutoCloseable
                             "WHERE n.name='" + comName + "' " +
                             "SET n.helpfuls=n.helpfuls+1";
                     StatementResult add = tx.run(q);
-                    System.out.println("WE INCREMENTED IT BOIS!!!");
+                    //System.out.println("WE INCREMENTED IT BOIS!!!");
                     return q; }});
 
         }
@@ -333,7 +308,7 @@ public class App implements AutoCloseable
 
                     String q = "CREATE (" + userName + ":User { name: '" + userName + "'})";
                     StatementResult add = tx.run(q);
-                    System.out.println("New User Added to Database.");
+                    //System.out.println("New User Added to Database.");
                     return q; }});
 
         }
@@ -367,6 +342,7 @@ public class App implements AutoCloseable
             try {
                 //QueryResult res = database.searchByName("juniper-gin", "Gin");
                 QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
+                //QueryResult res = database.dataQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
                 res.nicePrint();
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
                 System.out.println("No fucking records cunt");

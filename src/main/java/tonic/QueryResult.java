@@ -1,28 +1,18 @@
 package tonic;
 
+import java.util.*;
+
 public class QueryResult {
 
-    public String[] keys;
-    public String[] values;
-    public String[] extraValues;
+    public List<String> keys;
+    public List<String> values;
+    public List<String> extraValues;
 
 
     public QueryResult() {
-        this.keys = new String[0];
-        this.values = new String[0];
-        this.extraValues = new String[0];
-    }
-
-    public void formatResultString(String resS) {
-        //System.out.println(resS);
-        String[] keysValues = resS.split("#");
-        this.keys = keysValues[0].split("§");
-        this.values = keysValues[1].split("%");
-    }
-
-    public void fromResultArray(String[] arr){
-        this.keys = arr[0].split("#");
-        this.values = arr[1].split("%");
+        this.keys = new ArrayList<>();
+        this.values = new ArrayList<>();
+        this.extraValues = new ArrayList<>();
     }
 
     public void nicePrint() {
