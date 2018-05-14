@@ -89,11 +89,11 @@ public class App implements AutoCloseable
         QueryResult result = new QueryResult();
 
         if (GARNISH.equals("")) {
-            QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
-            QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"'RETURN avg(rat.rating)";
+            QUERY1 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
+            QUERY2 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"'RETURN avg(rat.rating)";
         } else {
-            QUERY1 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
-            QUERY2 = "Match (g:Gin)-->(c)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
+            QUERY1 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
+            QUERY2 = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
         }
 
         try( Session session = driver.session() ) {
@@ -237,9 +237,7 @@ public class App implements AutoCloseable
         database.createDatabaseFromFile();
     }
 
-    public void createNewRating(final int rating, final String comment, final String comboName){
-
-
+    public String getCommentAmount(final String comboName){
         String amount;
         try(Session session = driver.session()){
             amount = session.writeTransaction(new TransactionWork<String>() {
@@ -254,19 +252,58 @@ public class App implements AutoCloseable
                     System.out.println("Amount of comments: " + a);
                     return a.toString(); }});
         }
+        System.out.println(amount);
+        return amount;
+    }
 
-        String noSpace = comboName.replace(" ","");
-        String comName = "'comment " + amount + " for " + comboName +
-        "'";
-        String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: " + comName + "," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
-        dataQuery(query);
-        System.out.println("Comment node has been submitted to the database.");
-        //nicePrint(dataReturn);
-        String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = " + comName + " AND b.name = '" + comboName +
-                "' CREATE (a)-[r:ComboComment]->(b) RETURN type(r)";
-        dataQuery(relationQuery);
-        System.out.println("The Relation between rating and Combo has been created.");
-        //nicePrint(relDataReturn);
+    public void createNewRating(final int rating, final String comment, final String comboName){
+        try(Session session = driver.session()){
+            session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+                    String amount = getCommentAmount(comboName);
+                    String noSpace = comboName.replace(" ","");
+                    String comName = "comment " + amount + " for " + comboName;
+                    String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
+                    System.out.println(query);
+                    StatementResult run = tx.run(query);
+                    System.out.println("Comment node has been submitted to the database.");
+                    String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = '" + comName + "' AND b.name = '" + comboName +
+                            "' CREATE (a)-[r:Rating_For]->(b)";
+                    run = tx.run(relationQuery);
+                    System.out.println("The Relation between rating and Combo has been created.");
+                    return relationQuery;
+                }
+            });
+        }
+    }
+
+    public void createNewRating(final int rating, final String comment, final String comboName, final String userName){
+        try(Session session = driver.session()){
+            session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+                    String amount = getCommentAmount(comboName);
+                    String noSpace = comboName.replace(" ","");
+                    String comName = "comment " + amount + " for " + comboName;
+                    String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " + rating + ", comment: '" + comment + "', helpfuls: 0})" ;
+                    System.out.println(query);
+                    StatementResult run = tx.run(query);
+
+                    System.out.println("Comment node has been submitted to the database.");
+                    String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = '" + comName + "' AND b.name = '" + comboName +
+                            "' CREATE (a)-[r:Rating_For]->(b)";
+                    run = tx.run(relationQuery);
+                    System.out.println("The Relation between rating and Combo has been created.");
+                    String userRatingQuery = "MATCH (a:User),(b:Rating) " +
+                            "WHERE a.name = '" + userName + "' AND b.name = 'comment " + amount + " for " + comboName +
+                            "' CREATE (a)-[r:Owner_Of]->(b)";
+                    run = tx.run(userRatingQuery);
+                    return userRatingQuery;
+                }
+            });
+        }
+
     }
 
     public void incrHelpful(final String comName){
@@ -281,7 +318,22 @@ public class App implements AutoCloseable
                             "WHERE n.name='" + comName + "' " +
                             "SET n.helpfuls=n.helpfuls+1";
                     StatementResult add = tx.run(q);
-                    System.out.println("WE DID IT BOIS!!!");
+                    System.out.println("WE INCREMENTED IT BOIS!!!");
+                    return q; }});
+
+        }
+    }
+
+    public void createNewUser(final String userName){
+        try( Session session = driver.session() ) {
+
+            session.writeTransaction(new TransactionWork<String>() {
+                @Override
+                public String execute(Transaction tx) {
+
+                    String q = "CREATE (" + userName + ":User { name: '" + userName + "'})";
+                    StatementResult add = tx.run(q);
+                    System.out.println("New User Added to Database.");
                     return q; }});
 
         }
@@ -301,17 +353,19 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Gin", "New Gin");
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
-            //database.resetDatabase(database);
+            database.resetDatabase(database);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
-            //database.createNewRating(5, "Super good stuff!", "The rice");
-            //database.createNewRating(1, "GARBAGE!!!", "The rice");
-            //database.incrHelpful("comment 0 for The rice");
+            database.createNewRating(5, "Super good stuff!", "The rice");
+            database.createNewRating(1, "GARBAGE!!!", "The rice");
+            database.incrHelpful("comment 0 for The rice");
+            database.createNewUser("Peter");
+            database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                //QueryResult res = database.searchByName("x", "Gin");
+                //QueryResult res = database.searchByName("juniper-gin", "Gin");
                 QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
                 res.nicePrint();
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
