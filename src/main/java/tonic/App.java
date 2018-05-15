@@ -73,7 +73,7 @@ public class App implements AutoCloseable
             int i = s.lastIndexOf("/");
             s = s.substring(0,i);
         }
-        s = s.concat("/base base base.txt/");
+        s = s.concat("/dataBaseWithComments.txt/");
 
         try(BufferedReader br = new BufferedReader(new FileReader(s))) {
             StringBuilder sb = new StringBuilder();
@@ -248,6 +248,14 @@ public class App implements AutoCloseable
         String q = "CREATE (" + userName + ":User { name: '" + userName + "'})";
         voidQuery(q);
     }
+    public QueryResult sortByHelpful(final String comboName){
+        String q = "MATCH (r:Rating)-->(c:Combo) " +
+                "WHERE c.name='" + comboName + "' " +
+                "RETURN r.comment, r.rating,r.helpfuls " +
+                "ORDER BY r.helpfuls DESC";
+        QueryResult res = multiValueQuery(q);
+        return res;
+    }
 
 
     public static void main( String... args )
@@ -263,21 +271,22 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Gin", "New Gin");
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
-            //database.resetDatabase(database);
+            database.resetDatabase(database);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
-            //database.createNewRating(5, "Super good stuff!", "The rice");
-            //database.createNewRating(1, "GARBAGE!!!", "The rice");
-            //database.incrHelpful("comment 0 for The rice");
-            //database.createNewUser("Peter");
-            //database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
+            database.createNewRating(5, "Super good stuff!", "The rice");
+            database.createNewRating(1, "GARBAGE!!!", "The rice");
+            database.incrHelpful("comment 0 for The rice");
+            database.createNewUser("Peter");
+            database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                QueryResult res = database.searchByName("juniper-gin", "Gin");
+                //QueryResult res = database.searchByName("juniper-gin", "Gin");
                 //QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
                 //QueryResult res = database.multiValueQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
+                QueryResult res = database.sortByHelpful("The cat");
                 res.nicePrint();
                 //System.out.println("Average rating: " + database.getAverageRating("juniper-gin", "Top Note Indian Tonic", "Olive oil"));
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
