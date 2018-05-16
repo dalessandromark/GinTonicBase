@@ -244,10 +244,11 @@ public class App implements AutoCloseable
         voidQuery(q);
     }
 
-    public void createNewUser(final String userName){
-        String q = "CREATE (" + userName + ":User { name: '" + userName + "'})";
+    public void createNewUser(final String USERNAME){
+        String q = "CREATE (" + USERNAME + ":User { name: '" + USERNAME + "'})";
         voidQuery(q);
     }
+
     public QueryResult sortByHelpful(final String comboName){
         String q = "MATCH (r:Rating)-->(c:Combo) " +
                 "WHERE c.name='" + comboName + "' " +
@@ -257,6 +258,13 @@ public class App implements AutoCloseable
         return res;
     }
 
+    public QueryResult searchComboRatingsByUser(final String USERNAME){
+        String query = "MATCH (u:User)-->(r:Rating)-->(c:Combo) " +
+                "WHERE u.name='" + USERNAME + "' " +
+                "RETURN c.name, r.rating, r.comment";
+        QueryResult res = multiValueQuery(query);
+        return res;
+    }
 
     public static void main( String... args )
     {
@@ -286,7 +294,8 @@ public class App implements AutoCloseable
                 //QueryResult res = database.searchByName("juniper-gin", "Gin");
                 //QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
                 //QueryResult res = database.multiValueQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
-                QueryResult res = database.sortByHelpful("The cat");
+                //QueryResult res = database.sortByHelpful("The cat");
+                QueryResult res = database.searchComboRatingsByUser("Michael");
                 res.nicePrint();
                 //System.out.println("Average rating: " + database.getAverageRating("juniper-gin", "Top Note Indian Tonic", "Olive oil"));
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
