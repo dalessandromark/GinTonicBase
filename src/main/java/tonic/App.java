@@ -252,7 +252,7 @@ public class App implements AutoCloseable
     public QueryResult sortByHelpful(final String comboName){
         String q = "MATCH (r:Rating)-->(c:Combo) " +
                 "WHERE c.name='" + comboName + "' " +
-                "RETURN r.comment, r.rating,r.helpfuls " +
+                "RETURN r.rating, r.helpfuls, r.comment " +
                 "ORDER BY r.helpfuls DESC";
         QueryResult res = multiValueQuery(q);
         return res;
@@ -264,6 +264,41 @@ public class App implements AutoCloseable
                 "RETURN c.name, r.rating, r.comment";
         QueryResult res = multiValueQuery(query);
         return res;
+    }
+
+    public Value getNumOfUsersByCombo(final String COMBONAME){
+        String query = "MATCH (c:Combo)<--(r:Rating)<--(u:User) " +
+                "WHERE c.name='" + COMBONAME + "' " +
+                "RETURN COUNT(DISTINCT u)";
+        Value res = singleValueQuery(query);
+        return res;
+    }
+
+    public static void printValue(Value VALUE){
+        switch (VALUE.type().name()) {
+            case "STRING":
+                System.out.println("Value: " + VALUE.asString());
+                break;
+            case "INTEGER":
+                System.out.println("Value: " + VALUE.asInt());
+                break;
+            case "FLOAT":
+                System.out.println("Value: " + VALUE.asFloat());
+                break;
+            case "NODE":
+                try {
+                    Iterable<Value> nodeValues = VALUE.asNode().values();
+                    for (Value v : nodeValues) {
+                        printValue(v);
+                    }
+                } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
+                    //TODO: Maybe Insert code here for relationship values
+                }
+            case "DOUBLE":
+                System.out.println("Value: " + VALUE.asDouble());
+                break;
+            //TODO: Maybe add default other values of other types
+        }
     }
 
     public static void main( String... args )
@@ -288,15 +323,18 @@ public class App implements AutoCloseable
             database.incrHelpful("comment 0 for The rice");
             database.createNewUser("Peter");
             database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
+            database.createNewRating(1, "Test Rating", "The cat", "Joseph");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                //QueryResult res = database.searchByName("juniper-gin", "Gin");
-                QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
+                //QueryResult res = database.searchByName("inverroche-gin", "Gin");
+                //QueryResult res = database.searchCombinationByIngredients("inverroche-gin", "Fever-Tree Drink Gift Pack", "Fried Onion");
                 //QueryResult res = database.multiValueQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
                 //QueryResult res = database.sortByHelpful("The cat");
                 //QueryResult res = database.searchComboRatingsByUser("Michael");
-                res.nicePrint();
+                Value res = database.getNumOfUsersByCombo("The cat");
+                printValue(res);
+                //res.nicePrint();
                 //System.out.println("Average rating: " + database.getAverageRating("juniper-gin", "Top Note Indian Tonic", "Olive oil"));
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
                 System.out.println("No fucking records cunt");
