@@ -292,10 +292,10 @@ public class App implements AutoCloseable
             //database.nicePrint(result);
             try {
                 //QueryResult res = database.searchByName("juniper-gin", "Gin");
-                //QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
+                QueryResult res = database.searchCombinationByIngredients("juniper-gin", "Top Note Indian Tonic", "Olive oil");
                 //QueryResult res = database.multiValueQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
                 //QueryResult res = database.sortByHelpful("The cat");
-                QueryResult res = database.searchComboRatingsByUser("Michael");
+                //QueryResult res = database.searchComboRatingsByUser("Michael");
                 res.nicePrint();
                 //System.out.println("Average rating: " + database.getAverageRating("juniper-gin", "Top Note Indian Tonic", "Olive oil"));
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
