@@ -63,7 +63,7 @@ public class App implements AutoCloseable
 
     public void createDatabaseFromFile(String fileNmae) {
         String s = null;
-        String q;
+        String q = "";
         try {
             s = App.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath().toString();
         } catch (URISyntaxException e) {
@@ -77,16 +77,25 @@ public class App implements AutoCloseable
         s = s.concat("/"+ fileNmae +".txt/");
 
         try(BufferedReader br = new BufferedReader(new FileReader(s))) {
-            StringBuilder sb = new StringBuilder();
             String line = br.readLine();
-
+            StringBuilder sb = new StringBuilder();
+            int counter = 0;
             while (line != null) {
                 sb.append(line);
                 sb.append(System.lineSeparator());
+                //q = q.concat(sb.toString());
+                //System.out.println(sb.toString());
+                if(counter % 100 == 0){
+                    voidQuery(sb.toString());
+                    //q = "";
+                    sb = new StringBuilder();
+                }
+
+                counter++;
                 line = br.readLine();
             }
-            q = sb.toString();
-            voidQuery(q);
+            voidQuery(sb.toString());
+
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -316,8 +325,8 @@ public class App implements AutoCloseable
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
 
-            //String fileName = "bigData1000";
-            String fileName = "dataBaseWithComments";
+            String fileName = "bigData1000";
+            //String fileName = "dataBaseWithComments";
             database.resetDatabase(database, fileName);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
