@@ -409,7 +409,6 @@ public class App implements AutoCloseable
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
                 System.out.println("No fucking records cunt");
             }
-
         }
     }
 }
