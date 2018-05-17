@@ -27,7 +27,7 @@ public class App implements AutoCloseable
         driver.close();
     }
     public QueryResult searchByName(final String NAME, final String TYPE) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
-        final String QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'"+NAME+".*' RETURN n";
+        final String QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'(?i)^"+NAME+".*' RETURN n";
         return multiValueQuery(QUERY);
     }
 
@@ -36,9 +36,9 @@ public class App implements AutoCloseable
         QueryResult result;
 
         if (GARNISH.equals("")) {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+".*' AND t.name=~'(?i)^"+TONIC+".*' RETURN rat.rating, rat.comment";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+".*' AND t.name=~'(?i)^"+TONIC+".*' AND ga.name=~'(?i)^"+GARNISH+".*'  RETURN rat.rating, rat.comment";
         }
         result = multiValueQuery(QUERY);
         return result;
@@ -61,7 +61,7 @@ public class App implements AutoCloseable
         System.out.println("Successfully deleted the database");
     }
 
-    public void createDatabaseFromFile() {
+    public void createDatabaseFromFile(String fileNmae) {
         String s = null;
         String q;
         try {
@@ -73,7 +73,8 @@ public class App implements AutoCloseable
             int i = s.lastIndexOf("/");
             s = s.substring(0,i);
         }
-        s = s.concat("/dataBaseWithComments.txt/");
+        //s = s.concat("/dataBaseWithComments.txt/");
+        s = s.concat("/"+ fileNmae +".txt/");
 
         try(BufferedReader br = new BufferedReader(new FileReader(s))) {
             StringBuilder sb = new StringBuilder();
@@ -92,9 +93,9 @@ public class App implements AutoCloseable
         System.out.println("Successfully created the database");
     }
 
-    public void resetDatabase(App database){
+    public void resetDatabase(App database, String fileName){
         database.deleteDatabase();
-        database.createDatabaseFromFile();
+        database.createDatabaseFromFile(fileName);
     }
 
     public float getAverageRating(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
@@ -102,9 +103,9 @@ public class App implements AutoCloseable
         Float result;
 
         if (GARNISH.equals("")) {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"'RETURN avg(rat.rating)";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name=~'(?i)^"+GIN+".*' AND t.name='~'(?i)^"+TONIC+".*'RETURN avg(rat.rating)";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+".*' AND t.name=~'(?i)^"+TONIC+".*' AND ga.name=~'(?i)^"+GARNISH+".*' RETURN avg(rat.rating)";
         }
         try( Session session = driver.session() ) {
 
@@ -210,7 +211,7 @@ public class App implements AutoCloseable
 
     public int getCommentAmount(final String COMBONAME){
         String query = "MATCH (n:Rating)-[r]->(b:Combo)" +
-                            " WHERE b.name='" + COMBONAME + "'"
+                            " WHERE b.name=~'(?i)^" + COMBONAME + ".*'"
                             + " RETURN COUNT(r)";
         Value amount = singleValueQuery(query);
         return amount.asInt();
@@ -239,7 +240,7 @@ public class App implements AutoCloseable
 
     public void incrHelpful(final String COMNAME){
         String q = "MATCH (n:Rating) " +
-                "WHERE n.name='" + COMNAME + "' " +
+                "WHERE n.name=~'(?i)^" + COMNAME + ".*' " +
                 "SET n.helpfuls=n.helpfuls+1";
         voidQuery(q);
     }
@@ -251,7 +252,7 @@ public class App implements AutoCloseable
 
     public QueryResult sortByHelpful(final String comboName){
         String q = "MATCH (r:Rating)-->(c:Combo) " +
-                "WHERE c.name='" + comboName + "' " +
+                "WHERE c.name=~'(?i)^" + comboName + ".*' " +
                 "RETURN r.rating, r.helpfuls, r.comment " +
                 "ORDER BY r.helpfuls DESC";
         QueryResult res = multiValueQuery(q);
@@ -260,7 +261,7 @@ public class App implements AutoCloseable
 
     public QueryResult searchComboRatingsByUser(final String USERNAME){
         String query = "MATCH (u:User)-->(r:Rating)-->(c:Combo) " +
-                "WHERE u.name='" + USERNAME + "' " +
+                "WHERE u.name=~'(?i)^" + USERNAME + ".*' " +
                 "RETURN c.name, r.rating, r.comment";
         QueryResult res = multiValueQuery(query);
         return res;
@@ -268,7 +269,7 @@ public class App implements AutoCloseable
 
     public Value getNumOfUsersByCombo(final String COMBONAME){
         String query = "MATCH (c:Combo)<--(r:Rating)<--(u:User) " +
-                "WHERE c.name='" + COMBONAME + "' " +
+                "WHERE c.name=~'(?i)^" + COMBONAME + ".*' " +
                 "RETURN COUNT(DISTINCT u)";
         Value res = singleValueQuery(query);
         return res;
@@ -314,7 +315,10 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Gin", "New Gin");
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
-            database.resetDatabase(database);
+
+            //String fileName = "bigData1000";
+            String fileName = "dataBaseWithComments";
+            database.resetDatabase(database, fileName);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
@@ -327,15 +331,81 @@ public class App implements AutoCloseable
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                //QueryResult res = database.searchByName("inverroche-gin", "Gin");
-                //QueryResult res = database.searchCombinationByIngredients("inverroche-gin", "Fever-Tree Drink Gift Pack", "Fried Onion");
+                boolean testCaseSensitive = true;
+                boolean showTime = true;
+                if(testCaseSensitive==true && fileName.equals("dataBaseWithComments")) {
+                    System.out.println("\nTesting searchByName, find gins starting with 'aN': ");
+                    long startTime = System.currentTimeMillis();
+                    QueryResult res = database.searchByName("aN", "Gin");
+                    long stopTime = System.currentTimeMillis();
+                    long searchByNameTime = stopTime - startTime;
+                    //System.out.println(searchByNameTime);
+                    res.nicePrint();
+
+                    System.out.println("\n\nTesting searchCombinationByIngredients with case sensitivity: ");
+                    startTime = System.currentTimeMillis();
+                    res = database.searchCombinationByIngredients("iNverroche-gin", "fEver-Tree Drink Gift Pack", "fRied Onion");
+                    stopTime = System.currentTimeMillis();
+                    long searchCombinationByIngredientsTime = stopTime - startTime;
+                    //System.out.println(searchCombinationByIngredientsTime);
+                    res.nicePrint();
+
+                    //dataAdder
+
+                    System.out.println("\n\nTesting getAverageRating for case sensitivity: ");
+                    startTime = System.currentTimeMillis();
+                    System.out.println("Average rating: " + database.getAverageRating("iNverroche-gin", "fEver-Tree Drink Gift Pack", "fRied Onion"));
+                    stopTime = System.currentTimeMillis();
+                    long getAverageRatingTime = stopTime - startTime;
+                    //System.out.println(getAverageRatingTime);
+
+                    //getCommentAmount
+
+                    //createNewRating*2
+
+                    //incHelpful
+
+                    //createNewUser
+
+                    System.out.println("\n\nTesting sortByHelpful for 'ThE Cat': ");
+                    startTime = System.currentTimeMillis();
+                    res = database.sortByHelpful("ThE Cat");
+                    stopTime = System.currentTimeMillis();
+                    long sortByHelpfulTime = stopTime - startTime;
+                    //System.out.println(sortByHelpfulTime);
+                    res.nicePrint();
+
+                    System.out.println("\n\nTesting searchComboRatingsByUser for 'miChAeL': ");
+                    startTime = System.currentTimeMillis();
+                    res = database.searchComboRatingsByUser("miChAeL");
+                    stopTime = System.currentTimeMillis();
+                    long searchComboRatingsByUserTime = stopTime - startTime;
+                    //System.out.println(searchComboRatingsByUserTime);
+                    res.nicePrint();
+
+                    System.out.println("\n\nTesting getNumOfUsersByCombo for 'ThE CaT': ");
+                    startTime = System.currentTimeMillis();
+                    Value resSingle = database.getNumOfUsersByCombo("ThE CaT");
+                    stopTime = System.currentTimeMillis();
+                    long getNumOfUsersByComboTime = stopTime - startTime;
+                    //System.out.println(getNumOfUsersByComboTime);
+                    printValue(resSingle);
+
+                    if(showTime==true){
+                        System.out.println("\n\nPrinting times of executions");
+                        System.out.println("searchByName: " + searchByNameTime);
+                        System.out.println("searchCombinationByIngredients: " + searchCombinationByIngredientsTime);
+                        System.out.println("getAverageRating: "+getAverageRatingTime);
+                        System.out.println("sortByHelpful: "+sortByHelpfulTime);
+                        System.out.println("searchComboRatingsByUser: "+searchComboRatingsByUserTime);
+                        System.out.println("getNumOfUsersByCombo: "+getNumOfUsersByComboTime);
+                        System.out.println("\nAll: " + (searchByNameTime+searchCombinationByIngredientsTime+getAverageRatingTime+sortByHelpfulTime+searchComboRatingsByUserTime+getNumOfUsersByComboTime));
+                    }
+
+                }
+
                 //QueryResult res = database.multiValueQuery("MATCH (n)-[r]->(m) RETURN n,r,m;"); //Find all combinations and their components
-                //QueryResult res = database.sortByHelpful("The cat");
-                //QueryResult res = database.searchComboRatingsByUser("Michael");
-                Value res = database.getNumOfUsersByCombo("The cat");
-                printValue(res);
-                //res.nicePrint();
-                //System.out.println("Average rating: " + database.getAverageRating("juniper-gin", "Top Note Indian Tonic", "Olive oil"));
+
             } catch (org.neo4j.driver.v1.exceptions.NoSuchRecordException e) {
                 System.out.println("No fucking records cunt");
             }
