@@ -325,9 +325,12 @@ public class App implements AutoCloseable
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
 
-            String fileName = "bigData1000";
+            String fileName = "thiccdata";
             //String fileName = "dataBaseWithComments";
+            long time = System.currentTimeMillis();
             database.resetDatabase(database, fileName);
+            long finish = System.currentTimeMillis();
+            System.out.println("It took: " + ((finish -time) /1000));
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
