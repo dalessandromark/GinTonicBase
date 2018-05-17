@@ -325,8 +325,9 @@ public class App implements AutoCloseable
             //database.deleteDatabase();
             //database.createDatabaseFromFile();
 
-            String fileName = "bigData1000";
+            String fileName = "bigData";
             //String fileName = "dataBaseWithComments";
+
             database.resetDatabase(database, fileName);
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
