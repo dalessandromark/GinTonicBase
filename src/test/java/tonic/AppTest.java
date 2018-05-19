@@ -4,7 +4,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.neo4j.driver.v1.Value;
-import sun.awt.SunHints;
 
 /**
  * Unit test for simple App.
@@ -47,7 +46,8 @@ public class AppTest
 
     public static boolean timeGetAverageRating(final String GIN, final String TONIC, final String GARNISH) {
         startTime();
-        Float val = database.getAverageRating(GIN, TONIC, GARNISH);
+        Value val = database.getAverageRating(GIN, TONIC, GARNISH);
+        Float rating = val.asFloat();
         stopTime("getAverageRating");
         return true;
     }

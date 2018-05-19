@@ -10,8 +10,6 @@ import java.util.Iterator;
 import jdk.nashorn.internal.runtime.regexp.joni.Syntax;
 import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 
-import static org.neo4j.driver.v1.Values.NULL;
-
 public class App implements AutoCloseable
 {
     private final Driver driver;
@@ -69,7 +67,6 @@ public class App implements AutoCloseable
         String s = null;
         String q = "";
         try {
-            //WHAT IS THIS!?!?!?
             s = App.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath().toString();
         } catch (URISyntaxException e) {
             e.printStackTrace();
@@ -112,26 +109,17 @@ public class App implements AutoCloseable
         database.createDatabaseFromFile(fileName);
     }
 
-    public float getAverageRating(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
+    public Value getAverageRating(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY;
-        Float result;
+        Value result;
 
         if (GARNISH.equals("")) {
             QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' RETURN avg(rat.rating)";
         } else {
             QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' AND ga.name=~'(?i)^"+GARNISH+"' RETURN avg(rat.rating)";
         }
-        try( Session session = driver.session() ) {
 
-            result = session.writeTransaction(new TransactionWork<Float>() {
-                @Override
-                public Float execute(Transaction tx) {
-                    StatementResult result = tx.run(QUERY);
-                    if (result.peek().values().get(0) == NULL) {
-                        return null;
-                    }
-                    return result.single().get(0).asFloat();}});
-        }
+        result = singleValueQuery(QUERY);
         if (result == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
         return result;
     }
@@ -139,13 +127,14 @@ public class App implements AutoCloseable
     private Value singleValueQuery(final String QUERY) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         Value result;
         try(Session session = driver.session()){
+
             result = session.writeTransaction(new TransactionWork<Value>() {
                 @Override
                 public Value execute(Transaction tx) {
                     String q = QUERY;
-                    StatementResult add = tx.run(q);
-                    Value a = add.next().get(0);
-                    return a; }});
+                    StatementResult res = tx.run(q);
+                    Value val = res.next().get(0);
+                    return val; }});
         }
         if (result == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
         return result;
@@ -175,7 +164,7 @@ public class App implements AutoCloseable
                         while (valueIterator.hasNext()) {
                             try {
                                 Value val = valueIterator.next();
-                                addValue(queryResult, val, valueIterator);
+                                addValue(queryResult, val);
                             } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
                             }
                         }
@@ -186,7 +175,7 @@ public class App implements AutoCloseable
         return result;
     }
 
-    private void addValue(QueryResult queryResult, Value val, Iterator<Value> valueIterator){
+    private void addValue(QueryResult queryResult, Value val){
         switch (val.type().name()) {
             case "STRING":
                 queryResult.values.add(val.asString());
@@ -201,7 +190,7 @@ public class App implements AutoCloseable
                 try {
                     Iterable<Value> nodeValues = val.asNode().values();
                     for (Value v : nodeValues) {
-                        addValue(queryResult, v, valueIterator);
+                        addValue(queryResult, v);
                     }
                 } catch (org.neo4j.driver.v1.exceptions.value.Uncoercible e) {
                     //TODO: Maybe Insert code here for relationship values
@@ -287,15 +276,6 @@ public class App implements AutoCloseable
                 "RETURN COUNT(DISTINCT u)";
         Value res = singleValueQuery(query);
         return res;
-    }
-
-    public void createNewCombination(final String GIN, final String TONIC, final String GARNISH){
-        String query;
-        if(GARNISH.equals("")){
-            query = "MATCH (n:Gin), (t:Tonic) WHERE n.name='" + GIN + "' AND t.name='" + TONIC + "' CREATE (c:Combo)";
-        } else {
-
-        }
     }
 
     public void printValue(Value VALUE){
