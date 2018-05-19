@@ -87,7 +87,7 @@ public class App implements AutoCloseable
     }
 
     /**
-     * Simply empties, detaching all nodes.
+     * Simply empties, detaching all nodes from the database.
      */
     public void deleteDatabase() {
         voidQuery("MATCH (n) DETACH DELETE n");
