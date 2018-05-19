@@ -44,5 +44,6 @@ public class QueryResult {
         for (String val : this.extraValues) {
             System.out.println(val);
         }
+        System.out.println();
     }
 }
