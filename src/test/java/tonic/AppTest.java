@@ -175,10 +175,12 @@ public class AppTest
 
     public static void main(String[] args) {
         database = new App( "bolt://localhost:7687", "neo4j", "patrick123");
-        //database.resetDatabase(database,"thiccdata");
-        nonReturnAcceptanceTest();
-        returnAcceptanceTest();
-        //speedTest();
+        long start = System.currentTimeMillis();
+        database.resetDatabase(database,"thiccdata");
+        System.out.println("Time on database reset: " + (System.currentTimeMillis()-start) + "ms");
+        //nonReturnAcceptanceTest();
+        //returnAcceptanceTest();
+        speedTest();
 
     }
 }
