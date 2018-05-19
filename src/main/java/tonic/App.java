@@ -31,7 +31,7 @@ public class App implements AutoCloseable
     }
 
     //This name makes no sense since were searching for ratings and comments.
-    public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
+    public QueryResult getComboRating(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY;
         QueryResult result;
 
@@ -212,16 +212,15 @@ public class App implements AutoCloseable
         }
     }
 
-    public int getCommentAmount(final String COMBONAME){
+    public Value getCommentAmount(final String COMBONAME){
         String query = "MATCH (n:Rating)-[r]->(b:Combo)" +
                             " WHERE b.name=~'(?i)^" + COMBONAME + "'"
                             + " RETURN COUNT(r)";
-        Value amount = singleValueQuery(query);
-        return amount.asInt();
+        return singleValueQuery(query);
     }
 
     public void createNewRating(final int RATING, final String COMMENT, final String COMBONAME){
-        int amount = getCommentAmount(COMBONAME);
+        int amount = getCommentAmount(COMBONAME).asInt();
         String noSpace = COMBONAME.replace(" ","");
         String comName = "comment " + amount + " for " + COMBONAME;
         String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " +
@@ -233,7 +232,7 @@ public class App implements AutoCloseable
     }
 
     public void createNewRating(final int RATING, final String COMMENT, final String COMBONAME, final String USERNAME){
-        int amount = getCommentAmount(COMBONAME);
+        int amount = getCommentAmount(COMBONAME).asInt();
         createNewRating(RATING,COMMENT,COMBONAME);
         String userRatingQuery = "MATCH (a:User),(b:Rating) " +
                 "WHERE a.name = '" + USERNAME + "' AND b.name = 'comment " + amount + " for " + COMBONAME +
@@ -376,12 +375,12 @@ public class App implements AutoCloseable
                     //System.out.println(searchByNameTime);
                     res.nicePrint();
 
-                    System.out.println("\n\nTesting searchCombinationByIngredients with case sensitivity: ");
+                    System.out.println("\n\nTesting getComboRating with case sensitivity: ");
                     startTime = System.currentTimeMillis();
-                    res = database.searchCombinationByIngredients("iNverroche-gin", "fEver-Tree Drink Gift Pack", "fRied Onion");
+                    res = database.getComboRating("iNverroche-gin", "fEver-Tree Drink Gift Pack", "fRied Onion");
                     stopTime = System.currentTimeMillis();
-                    long searchCombinationByIngredientsTime = stopTime - startTime;
-                    //System.out.println(searchCombinationByIngredientsTime);
+                    long getComboRatingTime = stopTime - startTime;
+                    //System.out.println(getComboRatingTime);
                     res.nicePrint();
 
                     //dataAdder
@@ -428,12 +427,12 @@ public class App implements AutoCloseable
                     if(showTime==true){
                         System.out.println("\n\nPrinting times of executions");
                         System.out.println("searchByName: " + searchByNameTime);
-                        System.out.println("searchCombinationByIngredients: " + searchCombinationByIngredientsTime);
+                        System.out.println("getComboRating: " + getComboRatingTime);
                         System.out.println("getAverageRating: "+getAverageRatingTime);
                         System.out.println("sortByHelpful: "+sortByHelpfulTime);
                         System.out.println("searchComboRatingsByUser: "+searchComboRatingsByUserTime);
                         System.out.println("getNumOfUsersByCombo: "+getNumOfUsersByComboTime);
-                        System.out.println("\nAll: " + (searchByNameTime+searchCombinationByIngredientsTime+getAverageRatingTime+sortByHelpfulTime+searchComboRatingsByUserTime+getNumOfUsersByComboTime));
+                        System.out.println("\nAll: " + (searchByNameTime+getComboRatingTime+getAverageRatingTime+sortByHelpfulTime+searchComboRatingsByUserTime+getNumOfUsersByComboTime));
                     }
 
                 }

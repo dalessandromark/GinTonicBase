@@ -37,10 +37,10 @@ public class AppTest
         return true;
     }
 
-    public static boolean timeSearchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) {
+    public static boolean timegetComboRating(final String GIN, final String TONIC, final String GARNISH) {
         startTime();
-        QueryResult res = database.searchCombinationByIngredients(GIN, TONIC, GARNISH);
-        stopTime("searchCombinationByIngredients");
+        QueryResult res = database.getComboRating(GIN, TONIC, GARNISH);
+        stopTime("getComboRating");
         return true;
     }
 
@@ -121,7 +121,7 @@ public class AppTest
         System.out.println();
 
         System.out.println("Search for all ratings given a set of ingredients.");
-        res = database.searchCombinationByIngredients("Gin 123", "Tonic 123", "");
+        res = database.getComboRating("Gin 123", "Tonic 123", "");
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
@@ -157,7 +157,7 @@ public class AppTest
     public static boolean speedTest(){
         timeDataAdder("Gin", "Gin 12345");
         timeSearchByName("Gin 1030","Gin");
-        timeSearchCombinationByIngredients("Gin 1000","Tonic 1000","Garnish 1000");
+        timegetComboRating("Gin 1000","Tonic 1000","Garnish 1000");
         timeGetAverageRating("Gin 1000","Tonic 1000","Garnish 1000");
         timeGetCommentAmount("Combo 1000");
         timeSortByHelpful("Combo 1000");
