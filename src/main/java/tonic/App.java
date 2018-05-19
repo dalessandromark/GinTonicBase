@@ -2,13 +2,15 @@ package tonic;
 
 
 import org.neo4j.driver.v1.*;
+import org.neo4j.driver.v1.exceptions.NoSuchRecordException;
+import org.omg.PortableInterceptor.ORBInitInfoPackage.DuplicateName;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.DuplicateFormatFlagsException;
 import java.util.Iterator;
-import jdk.nashorn.internal.runtime.regexp.joni.Syntax;
-import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 
 public class App implements AutoCloseable
 {
@@ -25,13 +27,18 @@ public class App implements AutoCloseable
         driver.close();
     }
     //Good method, works generally, not just on specific types.
-    public QueryResult searchByName(final String NAME, final String TYPE) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
-        final String QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'(?i)^"+NAME+".*' RETURN n";
+    public QueryResult searchByName(final String NAME, final String TYPE, final boolean REGEXMATCHING) throws NoSuchRecordException{
+        final String QUERY;
+        if(REGEXMATCHING){
+            QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'(?i)^"+NAME+".*' RETURN n";
+        } else {
+            QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'(?i)^"+NAME+"' RETURN n";
+        }
         return multiValueQuery(QUERY);
     }
 
     //This name makes no sense since were searching for ratings and comments.
-    public QueryResult getComboRating(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
+    public QueryResult getComboRating(final String GIN, final String TONIC, final String GARNISH) throws NoSuchRecordException {
         final String QUERY;
         QueryResult result;
 
@@ -109,7 +116,7 @@ public class App implements AutoCloseable
         database.createDatabaseFromFile(fileName);
     }
 
-    public Value getAverageRating(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
+    public Value getAverageRating(final String GIN, final String TONIC, final String GARNISH) throws NoSuchRecordException {
         final String QUERY;
         Value result;
 
@@ -120,11 +127,11 @@ public class App implements AutoCloseable
         }
 
         result = singleValueQuery(QUERY);
-        if (result == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        if (result == null) throw new NoSuchRecordException("No matching record(s) found");
         return result;
     }
 
-    private Value singleValueQuery(final String QUERY) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
+    private Value singleValueQuery(final String QUERY) throws NoSuchRecordException {
         Value result;
         try(Session session = driver.session()){
 
@@ -136,7 +143,7 @@ public class App implements AutoCloseable
                     Value val = res.next().get(0);
                     return val; }});
         }
-        if (result == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        if (result == null) throw new NoSuchRecordException("No matching record(s) found");
         return result;
     }
 
@@ -171,7 +178,7 @@ public class App implements AutoCloseable
                     }
                     return queryResult; }});
         }
-        if (result == null) throw new org.neo4j.driver.v1.exceptions.NoSuchRecordException("No matching record(s) found");
+        if (result == null) throw new NoSuchRecordException("No matching record(s) found");
         return result;
     }
 
@@ -212,56 +219,78 @@ public class App implements AutoCloseable
         }
     }
 
-    public Value getCommentAmount(final String COMBONAME){
+    public Value getCommentAmount(final String COMBONAME) throws NoSuchRecordException{
+        Value result;
         String query = "MATCH (n:Rating)-[r]->(b:Combo)" +
-                            " WHERE b.name=~'(?i)^" + COMBONAME + "'"
-                            + " RETURN COUNT(r)";
-        return singleValueQuery(query);
+                " WHERE b.name=~'(?i)^" + COMBONAME + "'"
+                + " RETURN COUNT(r)";
+        result = singleValueQuery(query);
+        return result;
     }
 
-    public void createNewRating(final int RATING, final String COMMENT, final String COMBONAME){
-        int amount = getCommentAmount(COMBONAME).asInt();
-        String noSpace = COMBONAME.replace(" ","");
-        String comName = "comment " + amount + " for " + COMBONAME;
-        String query = "CREATE ("+ noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " +
-                RATING + ", comment: '" + COMMENT + "', helpfuls: 0})" ;
-        String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = '" + comName + "' AND b.name = '" + COMBONAME +
-                "' CREATE (a)-[r:Rating_For]->(b)";
-        voidQuery(query);
-        voidQuery(relationQuery);
+    public void createRating(final int RATING, final String COMMENT, final String COMBONAME) throws IllegalArgumentException, NoSuchRecordException{
+        try{
+            searchByName(COMBONAME,"Combo",false).values.contains(COMBONAME);
+        } catch(NoSuchRecordException ex){
+            System.err.println("No such Combination.");
+        }
+        if(!COMMENT.equals("") || !(RATING > 5) && !(RATING < 1)) {
+            int amount = getCommentAmount(COMBONAME).asInt();
+            String noSpace = COMBONAME.replace(" ", "");
+            String comName = "comment " + amount + " for " + COMBONAME;
+            String query = "CREATE (" + noSpace + "rating" + amount + ":Rating { name: '" + comName + "'," + " rating: " +
+                    RATING + ", comment: '" + COMMENT + "', helpfuls: 0})";
+            String relationQuery = "MATCH (a:Rating),(b:Combo) " + "WHERE a.name = '" + comName + "' AND b.name = '" + COMBONAME +
+                    "' CREATE (a)-[r:Rating_For]->(b)";
+            voidQuery(query);
+            voidQuery(relationQuery);
+        } else if(COMMENT.equals("")) {
+            throw new IllegalArgumentException("The comment provided is empty.");
+        } else {
+            throw new IllegalArgumentException("The Rating provided is invalid.");
+        }
     }
 
-    public void createNewRating(final int RATING, final String COMMENT, final String COMBONAME, final String USERNAME){
+    public void createRating(final int RATING, final String COMMENT, final String COMBONAME, final String USERNAME) throws IllegalArgumentException, NoSuchRecordException{
+        createRating(RATING,COMMENT,COMBONAME);
         int amount = getCommentAmount(COMBONAME).asInt();
-        createNewRating(RATING,COMMENT,COMBONAME);
         String userRatingQuery = "MATCH (a:User),(b:Rating) " +
                 "WHERE a.name = '" + USERNAME + "' AND b.name = 'comment " + amount + " for " + COMBONAME +
                 "' CREATE (a)-[r:Owner_Of]->(b)";
         voidQuery(userRatingQuery);
     }
 
-    public void incrHelpful(final String COMNAME){
+    public void incrHelpful(final String COMNAME) throws NoSuchRecordException{
+        try{
+            searchByName(COMNAME,"Rating",false);
+        } catch (NoSuchRecordException ex){
+            System.err.println("No such Rating.");
+        }
         String q = "MATCH (n:Rating) " +
                 "WHERE n.name=~'(?i)^" + COMNAME + "' " +
                 "SET n.helpfuls=n.helpfuls+1";
         voidQuery(q);
     }
 
-    public void createNewUser(final String USERNAME){
-        String q = "CREATE (" + USERNAME + ":User { name: '" + USERNAME + "'})";
-        voidQuery(q);
+    public void createUser(final String USERNAME) throws IllegalArgumentException{
+        if(!searchByName(USERNAME,"User",false).values.contains(USERNAME)){
+            String q = "CREATE (" + USERNAME + ":User { name: '" + USERNAME + "'})";
+            voidQuery(q);
+        } else {
+            throw new IllegalArgumentException("Username is taken.");
+        }
     }
 
-    public QueryResult sortByHelpful(final String comboName){
+    public QueryResult sortByHelpful(final String COMBONAME) throws NoSuchRecordException{
         String q = "MATCH (r:Rating)-->(c:Combo) " +
-                "WHERE c.name=~'(?i)^" + comboName + "' " +
+                "WHERE c.name=~'(?i)^" + COMBONAME + "' " +
                 "RETURN r.rating, r.helpfuls, r.comment " +
                 "ORDER BY r.helpfuls DESC";
         QueryResult res = multiValueQuery(q);
         return res;
     }
 
-    public QueryResult searchComboRatingsByUser(final String USERNAME){
+    public QueryResult getUserRatings(final String USERNAME) throws NoSuchRecordException{
         String query = "MATCH (u:User)-->(r:Rating)-->(c:Combo) " +
                 "WHERE u.name='" + USERNAME + "' " +
                 "RETURN c.name, r.rating, r.comment";
@@ -269,7 +298,7 @@ public class App implements AutoCloseable
         return res;
     }
 
-    public Value getNumOfUsersByCombo(final String COMBONAME){
+    public Value getUserAmount(final String COMBONAME) throws NoSuchRecordException{
         String query = "MATCH (c:Combo)<--(r:Rating)<--(u:User) " +
                 "WHERE c.name=~'(?i)^" + COMBONAME + "' " +
                 "RETURN COUNT(DISTINCT u)";
@@ -304,34 +333,42 @@ public class App implements AutoCloseable
         }
     }
 
-    public void createCombination(final String NEWNAME, final String GIN, final String TONIC){
-        String q = "MATCH (b:Combo)"
-                + " RETURN COUNT(b)";
-        Value amount = singleValueQuery(q);
+    public void createCombination(final String NEWNAME, final String GIN, final String TONIC) throws IllegalArgumentException, NoSuchRecordException{
+        if(searchByName(NEWNAME,"Combo",false).values.contains(NEWNAME)){
+            throw new IllegalArgumentException("Combination already exists.");
+        }
+        try{
+            searchByName(GIN,"Gin",false);
+            searchByName(TONIC,"Tonic",false);
+            String q = "MATCH (b:Combo)"
+                    + " RETURN COUNT(b)";
+            Value amount = singleValueQuery(q);
 
-        q = "CREATE (com" + amount.asInt() + ":Combo { name: '" + NEWNAME + "' })";
-        voidQuery(q);
+            q = "CREATE (com" + amount.asInt() + ":Combo { name: '" + NEWNAME + "' })";
+            voidQuery(q);
 
-        q = "MATCH (a:Gin),(b:Tonic),(d:Combo) " +
-                "WHERE a.name = '" + GIN + "' AND b.name = '" + TONIC + "' AND d.name='" + NEWNAME + "' " +
-                "CREATE (a)-[:IS_IN]->(d), (b)-[:IS_IN]->(d)";
-        voidQuery(q);
+            q = "MATCH (a:Gin),(b:Tonic),(d:Combo) " +
+                    "WHERE a.name = '" + GIN + "' AND b.name = '" + TONIC + "' AND d.name='" + NEWNAME + "' " +
+                    "CREATE (a)-[:IS_IN]->(d), (b)-[:IS_IN]->(d)";
+            voidQuery(q);
+        } catch(NoSuchRecordException ex){
+            System.err.println("The Gin or Tonic provided does not exists.");
+        }
     }
 
-    public void createCombination(final String NEWNAME, final String GIN, final String TONIC, final String GARNISH){
-        String q = "MATCH (b:Combo)"
-                + " RETURN COUNT(b)";
-        Value amount = singleValueQuery(q);
-
-        q = "CREATE (com" + amount.asInt() + ":Combo { name: '" + NEWNAME + "' })";
-        voidQuery(q);
-
-        q = "MATCH (a:Gin),(b:Tonic),(c:Garnish),(d:Combo) " +
-                "WHERE a.name = '" + GIN + "' AND b.name = '" + TONIC + "' AND c.name='" + GARNISH + "' AND d.name='" + NEWNAME + "' " +
-                "CREATE (a)-[:IS_IN]->(d), (b)-[:IS_IN]->(d),(c)-[:IS_IN]->(d)";
-        voidQuery(q);
+    public void createCombination(final String NEWNAME, final String GIN, final String TONIC, final String GARNISH) throws IllegalArgumentException, NoSuchRecordException{
+        createCombination(NEWNAME, GIN, TONIC);
+        try{
+            searchByName(GARNISH,"Garnish",false);
+            String q = "MATCH (c:Garnish),(d:Combo) " +
+                    "WHERE c.name='" + GARNISH + "' AND d.name='" + NEWNAME + "' " +
+                    "CREATE (c)-[:IS_IN]->(d)";
+            voidQuery(q);
+        } catch (NoSuchRecordException ex){
+            System.err.println("The Garnish provided does not exist.");
+        }
     }
-
+/*
     public static void main( String... args )
     {
         App database = new App( "bolt://localhost:7687", "neo4j", "patrick123");
@@ -355,12 +392,12 @@ public class App implements AutoCloseable
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
-            //database.createNewRating(5, "Super good stuff!", "The rice");
-            //database.createNewRating(1, "GARBAGE!!!", "The rice");
+            //database.createRating(5, "Super good stuff!", "The rice");
+            //database.createRating(1, "GARBAGE!!!", "The rice");
             //database.incrHelpful("comment 0 for The rice");
-            //database.createNewUser("Peter");
-            //database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
-            //database.createNewRating(1, "Test Rating", "The cat", "Joseph");
+            //database.createUser("Peter");
+            //database.createRating(3,"Its alright i guess.", "The rice", "Peter");
+            //database.createRating(1, "Test Rating", "The cat", "Joseph");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
@@ -394,11 +431,11 @@ public class App implements AutoCloseable
 
                     //getCommentAmount
 
-                    //createNewRating*2
+                    //createRating*2
 
                     //incHelpful
 
-                    //createNewUser
+                    //createUser
 
                     System.out.println("\n\nTesting sortByHelpful for 'ThE Cat': ");
                     startTime = System.currentTimeMillis();
@@ -408,17 +445,17 @@ public class App implements AutoCloseable
                     //System.out.println(sortByHelpfulTime);
                     res.nicePrint();
 
-                    System.out.println("\n\nTesting searchComboRatingsByUser for 'miChAeL': ");
+                    System.out.println("\n\nTesting getUserRatings for 'miChAeL': ");
                     startTime = System.currentTimeMillis();
-                    res = database.searchComboRatingsByUser("miChAeL");
+                    res = database.getUserRatings("miChAeL");
                     stopTime = System.currentTimeMillis();
                     long searchComboRatingsByUserTime = stopTime - startTime;
                     //System.out.println(searchComboRatingsByUserTime);
                     res.nicePrint();
 
-                    System.out.println("\n\nTesting getNumOfUsersByCombo for 'ThE CaT': ");
+                    System.out.println("\n\nTesting getUserAmount for 'ThE CaT': ");
                     startTime = System.currentTimeMillis();
-                    Value resSingle = database.getNumOfUsersByCombo("ThE CaT");
+                    Value resSingle = database.getUserAmount("ThE CaT");
                     stopTime = System.currentTimeMillis();
                     long getNumOfUsersByComboTime = stopTime - startTime;
                     //System.out.println(getNumOfUsersByComboTime);
@@ -430,8 +467,8 @@ public class App implements AutoCloseable
                         System.out.println("getComboRating: " + getComboRatingTime);
                         System.out.println("getAverageRating: "+getAverageRatingTime);
                         System.out.println("sortByHelpful: "+sortByHelpfulTime);
-                        System.out.println("searchComboRatingsByUser: "+searchComboRatingsByUserTime);
-                        System.out.println("getNumOfUsersByCombo: "+getNumOfUsersByComboTime);
+                        System.out.println("getUserRatings: "+searchComboRatingsByUserTime);
+                        System.out.println("getUserAmount: "+getNumOfUsersByComboTime);
                         System.out.println("\nAll: " + (searchByNameTime+getComboRatingTime+getAverageRatingTime+sortByHelpfulTime+searchComboRatingsByUserTime+getNumOfUsersByComboTime));
                     }
 
@@ -443,5 +480,5 @@ public class App implements AutoCloseable
                 System.out.println("No fucking records cunt");
             }
         }
-    }
+    }*/
 }

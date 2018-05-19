@@ -1,26 +1,14 @@
 package tonic;
 
-import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
 import org.neo4j.driver.v1.Value;
 
-/**
- * Unit test for simple App.
- */
+
 public class AppTest
 {
     private static App database;
     private static long start;
 
-    /**
-     * Rigorous Test :-)
-     */
-    @Test
-    public static void shouldAnswerWithTrue()
-    {
-        assertTrue( true );
-    }
 
     private static void startTime(){
         start = System.currentTimeMillis();
@@ -32,7 +20,7 @@ public class AppTest
     }
     public static boolean timeSearchByName(final String NAME, final String TYPE) {
         startTime();
-        QueryResult res = database.searchByName(NAME, TYPE);
+        QueryResult res = database.searchByName(NAME, TYPE,true);
         stopTime("searchByName");
         return true;
     }
@@ -54,7 +42,7 @@ public class AppTest
 
     public static boolean timeGetCommentAmount(final String COMBONAME) {
         startTime();
-        int res = database.getCommentAmount(COMBONAME);
+        int res = database.getCommentAmount(COMBONAME).asInt();
         stopTime("getCommentAmount");
         return true;
     }
@@ -68,15 +56,15 @@ public class AppTest
 
     public static boolean timeSearchComboRatingsByUser(final String USERNAME){
         startTime();
-        QueryResult res = database.searchComboRatingsByUser(USERNAME);
-        stopTime("searchComboRatingsByUser");
+        QueryResult res = database.getUserRatings(USERNAME);
+        stopTime("getUserRatings");
         return true;
     }
 
     public static boolean timeGetNumOfUsersByCombo(final String COMBONAME){
         startTime();
-        Value val = database.getNumOfUsersByCombo(COMBONAME);
-        stopTime("getNumOfUsersByCombo");
+        Value val = database.getUserAmount(COMBONAME);
+        stopTime("getUserAmount");
         return true;
     }
 
@@ -85,37 +73,36 @@ public class AppTest
         database.dataAdder("Gin", "New Gin");
         database.dataAdder("Tonic", "New Tonic");
         database.dataAdder("Garnish", "New Garnish");
-        database.createNewRating(4,"Insert comment for a new rating here.","Combo 123","User 125");
+        database.createRating(4,"Insert comment for a new rating here.","Combo 123","User 125");
         return true;
     }
 
     public static boolean returnAcceptanceTest(){
         QueryResult res = new QueryResult();
 
-
         System.out.println("Search for newly created ingredients and rating.");
-        res = database.searchByName("New Gin", "Gin");
+        res = database.searchByName("New Gin", "Gin", true);
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
 
-        res = database.searchByName("New Tonic", "Tonic");
+        res = database.searchByName("New Tonic", "Tonic", true);
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
 
-        res = database.searchByName("New Garnish", "Garnish");
+        res = database.searchByName("New Garnish", "Garnish", true);
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
 
-        res = database.searchByName("comment 1","Rating");
+        res = database.searchByName("comment 1","Rating", true);
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
 
         System.out.println("Search for multiple Gins where 'Gin 1000' is the start of the name.");
-        res = database.searchByName("Gin 1000", "Gin");
+        res = database.searchByName("Gin 1000", "Gin", true);
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
@@ -129,13 +116,13 @@ public class AppTest
         System.out.println("Average Rating on Combo123:\n" + database.getAverageRating("Gin 123", "Tonic 123", "Garnish 123"));
         System.out.println();
 
-        Value val = database.getNumOfUsersByCombo("Combo 123");
+        Value val = database.getUserAmount("Combo 123");
         System.out.println("Number of users having rated Combo123:");
         database.printValue(val);
         System.out.println();
 
         System.out.println("Search all combinations rated by 'User 125' and the corresponding ratings.");
-        res = database.searchComboRatingsByUser("User 125");
+        res = database.getUserRatings("User 125");
         res.nicePrint();
         res = new QueryResult();
         System.out.println();
@@ -178,8 +165,8 @@ public class AppTest
         long start = System.currentTimeMillis();
         database.resetDatabase(database,"thiccdata");
         System.out.println("Time on database reset: " + (System.currentTimeMillis()-start) + "ms");
-        //nonReturnAcceptanceTest();
-        //returnAcceptanceTest();
+        nonReturnAcceptanceTest();
+        returnAcceptanceTest();
         speedTest();
 
     }
