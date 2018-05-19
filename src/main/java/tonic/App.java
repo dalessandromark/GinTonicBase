@@ -40,7 +40,7 @@ public class App implements AutoCloseable
         if (GARNISH.equals("")) {
             QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' RETURN rat.rating, rat.comment";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' AND ga.name='~'(?i)^"+GARNISH+"'  RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' AND ga.name=~'(?i)^"+GARNISH+"'  RETURN rat.rating, rat.comment";
         }
         result = multiValueQuery(QUERY);
         return result;
@@ -323,6 +323,34 @@ public class App implements AutoCloseable
                 break;
             //TODO: Maybe add default other values of other types
         }
+    }
+
+    public void createCombination(final String NEWNAME, final String GIN, final String TONIC){
+        String q = "MATCH (b:Combo)"
+                + " RETURN COUNT(b)";
+        Value amount = singleValueQuery(q);
+
+        q = "CREATE (com" + amount.asInt() + ":Combo { name: '" + NEWNAME + "' })";
+        voidQuery(q);
+
+        q = "MATCH (a:Gin),(b:Tonic),(d:Combo) " +
+                "WHERE a.name = '" + GIN + "' AND b.name = '" + TONIC + "' AND d.name='" + NEWNAME + "' " +
+                "CREATE (a)-[:IS_IN]->(d), (b)-[:IS_IN]->(d)";
+        voidQuery(q);
+    }
+
+    public void createCombination(final String NEWNAME, final String GIN, final String TONIC, final String GARNISH){
+        String q = "MATCH (b:Combo)"
+                + " RETURN COUNT(b)";
+        Value amount = singleValueQuery(q);
+
+        q = "CREATE (com" + amount.asInt() + ":Combo { name: '" + NEWNAME + "' })";
+        voidQuery(q);
+
+        q = "MATCH (a:Gin),(b:Tonic),(c:Garnish),(d:Combo) " +
+                "WHERE a.name = '" + GIN + "' AND b.name = '" + TONIC + "' AND c.name='" + GARNISH + "' AND d.name='" + NEWNAME + "' " +
+                "CREATE (a)-[:IS_IN]->(d), (b)-[:IS_IN]->(d),(c)-[:IS_IN]->(d)";
+        voidQuery(q);
     }
 
     public static void main( String... args )
