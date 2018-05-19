@@ -252,11 +252,12 @@ public class App implements AutoCloseable
     }
 
     public void createRating(final int RATING, final String COMMENT, final String COMBONAME, final String USERNAME) throws IllegalArgumentException, NoSuchRecordException{
-        createRating(RATING,COMMENT,COMBONAME);
         int amount = getCommentAmount(COMBONAME).asInt();
+        createRating(RATING,COMMENT,COMBONAME);
         String userRatingQuery = "MATCH (a:User),(b:Rating) " +
                 "WHERE a.name = '" + USERNAME + "' AND b.name = 'comment " + amount + " for " + COMBONAME +
                 "' CREATE (a)-[r:Owner_Of]->(b)";
+        System.out.println(userRatingQuery);
         voidQuery(userRatingQuery);
     }
 
@@ -290,6 +291,12 @@ public class App implements AutoCloseable
         return res;
     }
 
+    /**
+     *
+     * @param USERNAME: The name of the user which
+     * @return
+     * @throws NoSuchRecordException
+     */
     public QueryResult getUserRatings(final String USERNAME) throws NoSuchRecordException{
         String query = "MATCH (u:User)-->(r:Rating)-->(c:Combo) " +
                 "WHERE u.name='" + USERNAME + "' " +
