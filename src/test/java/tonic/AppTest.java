@@ -80,8 +80,82 @@ public class AppTest
         return true;
     }
 
-    public static void main(String[] args) {
-        database = new App( "bolt://localhost:7687", "neo4j", "patrick123");
+    //Creates 3 new ingredient nodes, and 1 new rating node to the database.
+    public static boolean nonReturnAcceptanceTest(){
+        database.dataAdder("Gin", "New Gin");
+        database.dataAdder("Tonic", "New Tonic");
+        database.dataAdder("Garnish", "New Garnish");
+        database.createNewRating(4,"Insert comment for a new rating here.","Combo 123","User 125");
+        return true;
+    }
+
+    public static boolean returnAcceptanceTest(){
+        QueryResult res = new QueryResult();
+
+
+        System.out.println("Search for newly created ingredients and rating.");
+        res = database.searchByName("New Gin", "Gin");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        res = database.searchByName("New Tonic", "Tonic");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        res = database.searchByName("New Garnish", "Garnish");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        res = database.searchByName("comment 1","Rating");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        System.out.println("Search for multiple Gins where 'Gin 1000' is the start of the name.");
+        res = database.searchByName("Gin 1000", "Gin");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        System.out.println("Search for all ratings given a set of ingredients.");
+        res = database.searchCombinationByIngredients("Gin 123", "Tonic 123", "");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        System.out.println("Average Rating on Combo123:\n" + database.getAverageRating("Gin 123", "Tonic 123", "Garnish 123"));
+        System.out.println();
+
+        Value val = database.getNumOfUsersByCombo("Combo 123");
+        System.out.println("Number of users having rated Combo123:");
+        database.printValue(val);
+        System.out.println();
+
+        System.out.println("Search all combinations rated by 'User 125' and the corresponding ratings.");
+        res = database.searchComboRatingsByUser("User 125");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        System.out.println("Sort ratings by helpfuls on Combo 123.");
+        res = database.sortByHelpful("Combo 123");
+        res.nicePrint();
+        res = new QueryResult();
+        System.out.println();
+
+        System.out.println("Increment the helpfuls on one of the ratings and sort again.");
+        database.incrHelpful("comment 1 for Combo 123");
+        res = database.sortByHelpful("Combo 123");
+        res.nicePrint();
+
+        return true;
+    }
+
+    public static boolean speedTest(){
+        timeDataAdder("Gin", "Gin 12345");
         timeSearchByName("Gin 1030","Gin");
         timeSearchCombinationByIngredients("Gin 1000","Tonic 1000","Garnish 1000");
         timeGetAverageRating("Gin 1000","Tonic 1000","Garnish 1000");
@@ -89,5 +163,22 @@ public class AppTest
         timeSortByHelpful("Combo 1000");
         timeSearchComboRatingsByUser("User 1000");
         timeGetNumOfUsersByCombo("Combo 1000");
+        return true;
+    }
+
+    public static boolean timeDataAdder(final String TYPE, final String NEWNAME) {
+        startTime();
+        database.dataAdder(TYPE,NEWNAME);
+        stopTime("dataAdder");
+        return true;
+    }
+
+    public static void main(String[] args) {
+        database = new App( "bolt://localhost:7687", "neo4j", "patrick123");
+        database.resetDatabase(database,"thiccdata");
+        nonReturnAcceptanceTest();
+        returnAcceptanceTest();
+        //speedTest();
+
     }
 }

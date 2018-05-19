@@ -26,24 +26,29 @@ public class App implements AutoCloseable
     {
         driver.close();
     }
+    //Good method, works generally, not just on specific types.
     public QueryResult searchByName(final String NAME, final String TYPE) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException{
         final String QUERY = "MATCH (n:"+TYPE+") WHERE n.name=~'(?i)^"+NAME+".*' RETURN n";
         return multiValueQuery(QUERY);
     }
 
+    //This name makes no sense since were searching for ratings and comments.
+    //Also "Case sensitivity" removed, because we do NOT wish to search for every Gin/Tonic/Garnish which starts with the given string.
+    //We only want to search through ONE combination.
     public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY;
         QueryResult result;
 
         if (GARNISH.equals("")) {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+".*' AND t.name=~'(?i)^"+TONIC+".*' RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+".*' AND t.name=~'(?i)^"+TONIC+".*' AND ga.name=~'(?i)^"+GARNISH+".*'  RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
         }
         result = multiValueQuery(QUERY);
         return result;
     }
 
+    //Type specific, Code convention not upheld, Slow because of the variable "val", does a scan of the "type".
     public void dataAdder(final String type, final String newName) {
         if(type.equals("Gin")||type.equals("Tonic")||type.equals("Garnish")){
 
@@ -55,16 +60,18 @@ public class App implements AutoCloseable
         else{System.out.println("Invalid input on type, can only use Gin, Tonic or Garnish");}
     }
 
-
+    //Good convenience method, non-requirement.
     public void deleteDatabase() {
         voidQuery("MATCH (n) DETACH DELETE n");
         System.out.println("Successfully deleted the database");
     }
 
+    //Good convenience method, non-requirement.
     public void createDatabaseFromFile(String fileNmae) {
         String s = null;
         String q = "";
         try {
+            //WHAT IS THIS!?!?!?
             s = App.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath().toString();
         } catch (URISyntaxException e) {
             e.printStackTrace();
@@ -112,9 +119,9 @@ public class App implements AutoCloseable
         Float result;
 
         if (GARNISH.equals("")) {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name=~'(?i)^"+GIN+".*' AND t.name='~'(?i)^"+TONIC+".*'RETURN avg(rat.rating)";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN avg(rat.rating)";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+".*' AND t.name=~'(?i)^"+TONIC+".*' AND ga.name=~'(?i)^"+GARNISH+".*' RETURN avg(rat.rating)";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
         }
         try( Session session = driver.session() ) {
 
@@ -220,7 +227,7 @@ public class App implements AutoCloseable
 
     public int getCommentAmount(final String COMBONAME){
         String query = "MATCH (n:Rating)-[r]->(b:Combo)" +
-                            " WHERE b.name=~'(?i)^" + COMBONAME + ".*'"
+                            " WHERE b.name='" + COMBONAME + "'"
                             + " RETURN COUNT(r)";
         Value amount = singleValueQuery(query);
         return amount.asInt();
@@ -249,7 +256,7 @@ public class App implements AutoCloseable
 
     public void incrHelpful(final String COMNAME){
         String q = "MATCH (n:Rating) " +
-                "WHERE n.name=~'(?i)^" + COMNAME + ".*' " +
+                "WHERE n.name='" + COMNAME + "' " +
                 "SET n.helpfuls=n.helpfuls+1";
         voidQuery(q);
     }
@@ -261,7 +268,7 @@ public class App implements AutoCloseable
 
     public QueryResult sortByHelpful(final String comboName){
         String q = "MATCH (r:Rating)-->(c:Combo) " +
-                "WHERE c.name=~'(?i)^" + comboName + ".*' " +
+                "WHERE c.name='" + comboName + "' " +
                 "RETURN r.rating, r.helpfuls, r.comment " +
                 "ORDER BY r.helpfuls DESC";
         QueryResult res = multiValueQuery(q);
@@ -270,7 +277,7 @@ public class App implements AutoCloseable
 
     public QueryResult searchComboRatingsByUser(final String USERNAME){
         String query = "MATCH (u:User)-->(r:Rating)-->(c:Combo) " +
-                "WHERE u.name=~'(?i)^" + USERNAME + ".*' " +
+                "WHERE u.name='" + USERNAME + "' " +
                 "RETURN c.name, r.rating, r.comment";
         QueryResult res = multiValueQuery(query);
         return res;
@@ -278,13 +285,13 @@ public class App implements AutoCloseable
 
     public Value getNumOfUsersByCombo(final String COMBONAME){
         String query = "MATCH (c:Combo)<--(r:Rating)<--(u:User) " +
-                "WHERE c.name=~'(?i)^" + COMBONAME + ".*' " +
+                "WHERE c.name='" + COMBONAME + "' " +
                 "RETURN COUNT(DISTINCT u)";
         Value res = singleValueQuery(query);
         return res;
     }
 
-    public static void printValue(Value VALUE){
+    public void printValue(Value VALUE){
         switch (VALUE.type().name()) {
             case "STRING":
                 System.out.println("Value: " + VALUE.asString());
@@ -327,10 +334,10 @@ public class App implements AutoCloseable
 
             String fileName = "thiccdata";
             //String fileName = "dataBaseWithComments";
-            long time = System.currentTimeMillis();
-            database.resetDatabase(database, fileName);
-            long finish = System.currentTimeMillis();
-            System.out.println("It took: " + ((finish -time) /1000));
+            //long time = System.currentTimeMillis();
+            //database.resetDatabase(database, fileName);
+            //long finish = System.currentTimeMillis();
+            //System.out.println("It took: " + ((finish -time) /1000));
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
@@ -345,7 +352,7 @@ public class App implements AutoCloseable
             try {
                 boolean testCaseSensitive = true;
                 boolean showTime = true;
-                if(testCaseSensitive==true && fileName.equals("dataBaseWithComments")) {
+                if(testCaseSensitive==true && fileName.equals("thiccdata")) {
                     System.out.println("\nTesting searchByName, find gins starting with 'aN': ");
                     long startTime = System.currentTimeMillis();
                     QueryResult res = database.searchByName("aN", "Gin");
@@ -401,7 +408,7 @@ public class App implements AutoCloseable
                     stopTime = System.currentTimeMillis();
                     long getNumOfUsersByComboTime = stopTime - startTime;
                     //System.out.println(getNumOfUsersByComboTime);
-                    printValue(resSingle);
+                    //printValue(resSingle);
 
                     if(showTime==true){
                         System.out.println("\n\nPrinting times of executions");
