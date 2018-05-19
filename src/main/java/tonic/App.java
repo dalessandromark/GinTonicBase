@@ -289,6 +289,15 @@ public class App implements AutoCloseable
         return res;
     }
 
+    public void createNewCombination(final String GIN, final String TONIC, final String GARNISH){
+        String query;
+        if(GARNISH.equals("")){
+            query = "MATCH (n:Gin), (t:Tonic) WHERE n.name='" + GIN + "' AND t.name='" + TONIC + "' CREATE (c:Combo)";
+        } else {
+
+        }
+    }
+
     public void printValue(Value VALUE){
         switch (VALUE.type().name()) {
             case "STRING":
