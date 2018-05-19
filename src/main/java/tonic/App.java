@@ -26,7 +26,17 @@ public class App implements AutoCloseable
     {
         driver.close();
     }
-    //Good method, works generally, not just on specific types.
+
+    /**
+     *
+     * @param NAME The name on the specific corresponding node.
+     * @param TYPE The type on the specific corresponding node.
+     * @param REGEXMATCHING Used to distinguish whether the caller wants to look for a specific name in the database,
+     *                      or any name that starts with the 'NAME' param.
+     * @return      If 'REGEXMATCHING' is true, returns any name that starts with the 'NAME' param.
+     *              If 'REGEXMATCHING' is false, returns a specific name corresponding to the 'NAME' param.
+     * @throws NoSuchRecordException Is thrown if no corresponding name is found in the database.
+     */
     public QueryResult searchByName(final String NAME, final String TYPE, final boolean REGEXMATCHING) throws NoSuchRecordException{
         final String QUERY;
         if(REGEXMATCHING){
@@ -37,7 +47,16 @@ public class App implements AutoCloseable
         return multiValueQuery(QUERY);
     }
 
-    //This name makes no sense since were searching for ratings and comments.
+    /**
+     *
+     * @param GIN The provided gin when searching for the ratings of a specific combination.
+     * @param TONIC The provided tonic when searching for the ratings of a specific combination.
+     * @param GARNISH The provided garnish when searching for the ratings of a specific combination.
+     *                Can optionally be left empty ("").
+     * @return      Finds the ratings and corresponding comments of the specific combination of ingredients.
+     * @throws NoSuchRecordException Is thrown if any of the ingredients or the combination of these ingredients
+     *                               doesn't exist in the database.
+     */
     public QueryResult getComboRating(final String GIN, final String TONIC, final String GARNISH) throws NoSuchRecordException {
         final String QUERY;
         QueryResult result;
@@ -51,7 +70,11 @@ public class App implements AutoCloseable
         return result;
     }
 
-    //Type specific, Code convention not upheld, Slow because of the variable "val", does a scan of the "type".
+    /**
+     *
+     * @param type The provided type of ingredient that will be added to the database.
+     * @param newName The provided name for the 'type' param.
+     */
     public void dataAdder(final String type, final String newName) {
         if(type.equals("Gin")||type.equals("Tonic")||type.equals("Garnish")){
 
@@ -63,14 +86,20 @@ public class App implements AutoCloseable
         else{System.out.println("Invalid input on type, can only use Gin, Tonic or Garnish");}
     }
 
-    //Good convenience method, non-requirement.
+    /**
+     * Simply empties, detaching all nodes.
+     */
     public void deleteDatabase() {
         voidQuery("MATCH (n) DETACH DELETE n");
         System.out.println("Successfully deleted the database");
     }
 
-    //Good convenience method, non-requirement.
-    public void createDatabaseFromFile(String fileNmae) {
+    /**
+     *
+     * @param fileName The provided name of the file which the database will be initialized from.
+     *                 It is required to be a .txt file and use the Cypher language to query the database.
+     */
+    public void createDatabaseFromFile(String fileName) {
         String s = null;
         String q = "";
         try {
@@ -83,7 +112,7 @@ public class App implements AutoCloseable
             s = s.substring(0,i);
         }
         //s = s.concat("/dataBaseWithComments.txt/");
-        s = s.concat("/"+ fileNmae +".txt/");
+        s = s.concat("/"+ fileName +".txt/");
 
         try(BufferedReader br = new BufferedReader(new FileReader(s))) {
             String line = br.readLine();
@@ -111,11 +140,26 @@ public class App implements AutoCloseable
         System.out.println("Successfully created the database");
     }
 
+    /**
+     *
+     * @param database The database to be deleted and then re-initialized.
+     * @param fileName The name of the file which the database will be initialized from.
+     */
     public void resetDatabase(App database, String fileName){
         database.deleteDatabase();
         database.createDatabaseFromFile(fileName);
     }
 
+    /**
+     *
+     * @param GIN The provided gin which is a part of the combination to get the average rating from.
+     * @param TONIC The provided tonic which is a part of the combination to get the average rating from.
+     * @param GARNISH The provided garnish which is a part of the combination to get the average rating from.
+     *                Two separate queries are made in case of the combination not containing a garnish ("").
+     * @return      Retrieves the average rating of a combination of the three ingredients.
+     * @throws NoSuchRecordException Is thrown in case neither the combination or any of the three ingredients doesn't
+     *                              exist in the database.
+     */
     public Value getAverageRating(final String GIN, final String TONIC, final String GARNISH) throws NoSuchRecordException {
         final String QUERY;
         Value result;
@@ -131,6 +175,12 @@ public class App implements AutoCloseable
         return result;
     }
 
+    /**
+     *
+     * @param QUERY The QUERY provided is in the Cypher language used for neo4j databases.
+     * @return Retrieves a single value after execution of the 'QUERY' param on the database.
+     * @throws NoSuchRecordException Is thrown in case the return of the 'QUERY' param doesn't exist in the database.
+     */
     private Value singleValueQuery(final String QUERY) throws NoSuchRecordException {
         Value result;
         try(Session session = driver.session()){
@@ -147,6 +197,12 @@ public class App implements AutoCloseable
         return result;
     }
 
+    /**
+     *
+     * @param QUERY The QUERY provided is in the Cypher language used for neo4j databases.
+     * @return Retrives back a list of keys and values from the provided 'QUERY' param after having it executed
+     *         on the database in the form of a QueryResult object.
+     */
     private QueryResult multiValueQuery(final String QUERY) {
         QueryResult result;
         try( Session session = driver.session() ) {
@@ -182,6 +238,11 @@ public class App implements AutoCloseable
         return result;
     }
 
+    /**
+     *
+     * @param queryResult The provided QueryResult object which will have added values to it.
+     * @param val The value which will be added to the 'QueryResult' param.
+     */
     private void addValue(QueryResult queryResult, Value val){
         switch (val.type().name()) {
             case "STRING":
@@ -208,6 +269,12 @@ public class App implements AutoCloseable
                     //TODO: Maybe add default other values of other types
         }
     }
+
+    /**
+     *
+     * @param QUERY The QUERY to be executed on the database. This query is typically one which adds new nodes
+     *              to the database without requiring a return.
+     */
     private void voidQuery(final String QUERY) {
         try( Session session = driver.session() ) {
 
@@ -219,6 +286,12 @@ public class App implements AutoCloseable
         }
     }
 
+    /**
+     *
+     * @param COMBONAME The name of the combination provided to find ratings put on it.
+     * @return Returns the amount of comments as a Value object, this is usually an integer.
+     * @throws NoSuchRecordException Is thrown when the given Combination doesn't exist in the database.
+     */
     public Value getCommentAmount(final String COMBONAME) throws NoSuchRecordException{
         Value result;
         String query = "MATCH (n:Rating)-[r]->(b:Combo)" +
@@ -293,7 +366,7 @@ public class App implements AutoCloseable
 
     /**
      *
-     * @param USERNAME: The name of the user which
+     * @param USERNAME: The name of the user
      * @return
      * @throws NoSuchRecordException
      */
