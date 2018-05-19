@@ -6,13 +6,10 @@ public class QueryResult {
 
     public List<String> keys;
     public List<String> values;
-    public List<String> extraValues;
-
 
     public QueryResult() {
         this.keys = new ArrayList<>();
         this.values = new ArrayList<>();
-        this.extraValues = new ArrayList<>();
     }
 
     public void nicePrint() {
@@ -40,9 +37,6 @@ public class QueryResult {
             }
             System.out.print("\t");
             keyAmount++;
-        }
-        for (String val : this.extraValues) {
-            System.out.println(val);
         }
         System.out.println();
     }

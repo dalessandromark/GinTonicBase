@@ -175,7 +175,7 @@ public class AppTest
 
     public static void main(String[] args) {
         database = new App( "bolt://localhost:7687", "neo4j", "patrick123");
-        database.resetDatabase(database,"thiccdata");
+        //database.resetDatabase(database,"thiccdata");
         nonReturnAcceptanceTest();
         returnAcceptanceTest();
         //speedTest();

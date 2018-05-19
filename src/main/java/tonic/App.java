@@ -33,16 +33,14 @@ public class App implements AutoCloseable
     }
 
     //This name makes no sense since were searching for ratings and comments.
-    //Also "Case sensitivity" removed, because we do NOT wish to search for every Gin/Tonic/Garnish which starts with the given string.
-    //We only want to search through ONE combination.
     public QueryResult searchCombinationByIngredients(final String GIN, final String TONIC, final String GARNISH) throws org.neo4j.driver.v1.exceptions.NoSuchRecordException {
         final String QUERY;
         QueryResult result;
 
         if (GARNISH.equals("")) {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' RETURN rat.rating, rat.comment";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"'  RETURN rat.rating, rat.comment";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' AND ga.name='~'(?i)^"+GARNISH+"'  RETURN rat.rating, rat.comment";
         }
         result = multiValueQuery(QUERY);
         return result;
@@ -55,7 +53,7 @@ public class App implements AutoCloseable
             Value val = singleValueQuery("match (n:" + type + ") return count(*)");
             String q = "CREATE(" + type.substring(0,3).toLowerCase() + val.asInt()+":"+type+"{name: '"+newName+"' })";
             voidQuery(q);
-            System.out.println("Successfully added a " + type + " with the name " + newName + " to the database");
+            //System.out.println("Successfully added a " + type + " with the name " + newName + " to the database");
         }
         else{System.out.println("Invalid input on type, can only use Gin, Tonic or Garnish");}
     }
@@ -119,9 +117,9 @@ public class App implements AutoCloseable
         Float result;
 
         if (GARNISH.equals("")) {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' RETURN avg(rat.rating)";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (rat:Rating) --> (c)  WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' RETURN avg(rat.rating)";
         } else {
-            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name='"+GIN+"' AND t.name='"+TONIC+"' AND ga.name='"+GARNISH+"' RETURN avg(rat.rating)";
+            QUERY = "Match (g:Gin)-->(c:Combo)<--(t:Tonic), (ga:Garnish)-->(c), (rat:Rating) --> (c) WHERE g.name=~'(?i)^"+GIN+"' AND t.name=~'(?i)^"+TONIC+"' AND ga.name=~'(?i)^"+GARNISH+"' RETURN avg(rat.rating)";
         }
         try( Session session = driver.session() ) {
 
@@ -227,7 +225,7 @@ public class App implements AutoCloseable
 
     public int getCommentAmount(final String COMBONAME){
         String query = "MATCH (n:Rating)-[r]->(b:Combo)" +
-                            " WHERE b.name='" + COMBONAME + "'"
+                            " WHERE b.name=~'(?i)^" + COMBONAME + "'"
                             + " RETURN COUNT(r)";
         Value amount = singleValueQuery(query);
         return amount.asInt();
@@ -256,7 +254,7 @@ public class App implements AutoCloseable
 
     public void incrHelpful(final String COMNAME){
         String q = "MATCH (n:Rating) " +
-                "WHERE n.name='" + COMNAME + "' " +
+                "WHERE n.name=~'(?i)^" + COMNAME + "' " +
                 "SET n.helpfuls=n.helpfuls+1";
         voidQuery(q);
     }
@@ -268,7 +266,7 @@ public class App implements AutoCloseable
 
     public QueryResult sortByHelpful(final String comboName){
         String q = "MATCH (r:Rating)-->(c:Combo) " +
-                "WHERE c.name='" + comboName + "' " +
+                "WHERE c.name=~'(?i)^" + comboName + "' " +
                 "RETURN r.rating, r.helpfuls, r.comment " +
                 "ORDER BY r.helpfuls DESC";
         QueryResult res = multiValueQuery(q);
@@ -285,7 +283,7 @@ public class App implements AutoCloseable
 
     public Value getNumOfUsersByCombo(final String COMBONAME){
         String query = "MATCH (c:Combo)<--(r:Rating)<--(u:User) " +
-                "WHERE c.name='" + COMBONAME + "' " +
+                "WHERE c.name=~'(?i)^" + COMBONAME + "' " +
                 "RETURN COUNT(DISTINCT u)";
         Value res = singleValueQuery(query);
         return res;
@@ -341,16 +339,16 @@ public class App implements AutoCloseable
             //database.dataAdder("Gin", "New Gin");
             //database.dataAdder("Tonic", "New Tonic");
             //database.dataAdder("Garnish", "New Garnish");
-            database.createNewRating(5, "Super good stuff!", "The rice");
-            database.createNewRating(1, "GARBAGE!!!", "The rice");
-            database.incrHelpful("comment 0 for The rice");
-            database.createNewUser("Peter");
-            database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
-            database.createNewRating(1, "Test Rating", "The cat", "Joseph");
+            //database.createNewRating(5, "Super good stuff!", "The rice");
+            //database.createNewRating(1, "GARBAGE!!!", "The rice");
+            //database.incrHelpful("comment 0 for The rice");
+            //database.createNewUser("Peter");
+            //database.createNewRating(3,"Its alright i guess.", "The rice", "Peter");
+            //database.createNewRating(1, "Test Rating", "The cat", "Joseph");
             //String[] result = database.dataAdder("MATCH (gin:Gin {name: 'bobbys-gin'}) RETURN gin", "Garnish", "New Garnish");
             //database.nicePrint(result);
             try {
-                boolean testCaseSensitive = true;
+                boolean testCaseSensitive = false;
                 boolean showTime = true;
                 if(testCaseSensitive==true && fileName.equals("thiccdata")) {
                     System.out.println("\nTesting searchByName, find gins starting with 'aN': ");
